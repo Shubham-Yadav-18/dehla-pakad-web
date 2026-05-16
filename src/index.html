@@ -24,9 +24,37 @@
         }
         .playing-card:hover { transform: translateY(-10px); }
         .table-area { min-height: 180px; background-color: #34495e; border-radius: 10px; padding: 20px; }
+
+        /* Hide game screen by default */
+        #game-screen { display: none; }
     </style>
 </head>
 <body>
+
+<div id="lobby-screen" class="container mt-5">
+    <div class="row justify-content-center text-center">
+        <div class="col-md-5 bg-dark p-5 rounded border border-info shadow-lg">
+            <h1 class="text-warning mb-4">Dehla Pakad</h1>
+            <p id="lobby-status" class="text-warning mb-4">Connecting to server...</p>
+
+            <div id="lobby-controls" style="display: none;">
+                <input type="text" id="player-name" class="form-control mb-4 text-center fs-5" placeholder="Enter Your Name">
+
+                <button class="btn btn-success btn-lg w-100 mb-4" onclick="createRoom()">Create New Room</button>
+
+                <div class="d-flex align-items-center mb-4">
+                    <hr class="flex-grow-1 border-secondary">
+                    <span class="mx-3 text-secondary">OR</span>
+                    <hr class="flex-grow-1 border-secondary">
+                </div>
+
+                <input type="text" id="join-code" class="form-control mb-2 text-center fs-5 text-uppercase" placeholder="4-Digit Code" maxlength="4">
+                <button class="btn btn-info btn-lg w-100" onclick="joinRoom()">Join Room</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <div id="victory-screen" class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style="background: rgba(0,0,0,0.8); z-index: 1000; display: none !important;">
     <div class="bg-dark text-white p-4 rounded text-center border border-warning" style="min-width: 450px; max-height: 90vh; overflow-y: auto;">
@@ -37,12 +65,12 @@
             <div class="bg-secondary p-2 rounded" style="width: 45%;">
                 <h5 class="text-info">Team A (This Round)</h5>
                 <p class="m-0">Dehlas: <span id="modal-dehlasA" class="fw-bold">0</span></p>
-                <p class="m-0">Points Earned: <span class="text-success fw-bold">+<span id="modal-pointsA">0</span></span></p>
+                <p class="m-0">Points: <span class="text-success fw-bold">+<span id="modal-pointsA">0</span></span></p>
             </div>
             <div class="bg-secondary p-2 rounded" style="width: 45%;">
                 <h5 class="text-info">Team B (This Round)</h5>
                 <p class="m-0">Dehlas: <span id="modal-dehlasB" class="fw-bold">0</span></p>
-                <p class="m-0">Points Earned: <span class="text-success fw-bold">+<span id="modal-pointsB">0</span></span></p>
+                <p class="m-0">Points: <span class="text-success fw-bold">+<span id="modal-pointsB">0</span></span></p>
             </div>
         </div>
 
@@ -51,14 +79,9 @@
         <div class="mb-3 border border-secondary" style="max-height: 150px; overflow-y: auto;">
             <table class="table table-dark table-sm table-striped mb-0">
                 <thead class="position-sticky top-0 bg-dark">
-                <tr>
-                    <th>Round</th>
-                    <th>Team A</th>
-                    <th>Team B</th>
-                </tr>
+                <tr><th>Round</th><th>Team A</th><th>Team B</th></tr>
                 </thead>
-                <tbody id="victory-scoreboard-body">
-                </tbody>
+                <tbody id="victory-scoreboard-body"></tbody>
             </table>
         </div>
 
@@ -68,7 +91,6 @@
             <button class="btn btn-lg btn-success w-50" onclick="playAgain()">Play Next Round</button>
             <button class="btn btn-lg btn-danger w-50" onclick="finishGame()">Finish Game</button>
         </div>
-
         <div id="game-over-message" class="text-success fs-3 fw-bold mt-3" style="display: none;"></div>
     </div>
 </div>
@@ -77,36 +99,27 @@
     <div class="bg-dark text-white p-4 rounded text-center border border-info" style="min-width: 400px; max-height: 80vh; overflow-y: auto;">
         <h2 class="text-info mb-3">Match History</h2>
         <table class="table table-dark table-striped">
-            <thead>
-            <tr>
-                <th>Round</th>
-                <th>Team A Points</th>
-                <th>Team B Points</th>
-            </tr>
-            </thead>
-            <tbody id="main-scoreboard-body">
-            </tbody>
+            <thead><tr><th>Round</th><th>Team A Points</th><th>Team B Points</th></tr></thead>
+            <tbody id="main-scoreboard-body"></tbody>
             <tfoot>
-            <tr class="fw-bold fs-5 text-warning">
-                <td>TOTAL</td>
-                <td id="history-total-A">0</td>
-                <td id="history-total-B">0</td>
-            </tr>
+            <tr class="fw-bold fs-5 text-warning"><td>TOTAL</td><td id="history-total-A">0</td><td id="history-total-B">0</td></tr>
             </tfoot>
         </table>
         <button class="btn btn-secondary mt-3 w-100" onclick="toggleScoreboard()">Close Scoreboard</button>
     </div>
 </div>
 
-<div class="container">
-    <div class="row mb-3">
+
+<div id="game-screen" class="container">
+    <div class="row mb-3 align-items-center">
         <div class="col-md-8">
             <div class="d-flex align-items-center gap-3 mb-2">
                 <h2 class="m-0">Dehla Pakad Table</h2>
+                <span class="badge bg-primary fs-5" id="display-room-code">Code: ####</span>
                 <button class="btn btn-outline-light btn-sm" onclick="toggleScoreboard()">📊 View Scoreboard</button>
+                <button class="btn btn-outline-danger btn-sm" onclick="leaveRoom()">🚪 Leave</button>
             </div>
 
-            <p>Status: <span id="connection-status" class="text-warning">Connecting...</span></p>
             <p>Phase: <strong id="phase" class="text-info">WAITING</strong> | Trump: <strong id="trump" class="text-danger">NONE</strong></p>
             <p class="fs-4">Turn: <span id="turn-indicator" class="fw-bold text-warning">Waiting...</span></p>
         </div>
@@ -122,16 +135,14 @@
     <div class="row mb-4">
         <div class="col-12">
             <h4>Table</h4>
-            <div id="table-cards" class="table-area d-flex flex-wrap align-items-center justify-content-center">
-            </div>
+            <div id="table-cards" class="table-area d-flex flex-wrap align-items-center justify-content-center"></div>
         </div>
     </div>
 
     <div class="row">
         <div class="col-12">
             <h4>My Hand</h4>
-            <div id="my-hand" class="d-flex flex-wrap">
-            </div>
+            <div id="my-hand" class="d-flex flex-wrap"></div>
         </div>
     </div>
 </div>
@@ -139,29 +150,61 @@
 <script>
     const ws = new WebSocket("ws://localhost:7070/game");
 
+    // --- LOCAL STORAGE MAGIC ---
+    let mySecretToken = localStorage.getItem("dehlaToken");
+
     ws.onopen = () => {
-        document.getElementById("connection-status").innerText = "Connected!";
-        document.getElementById("connection-status").className = "text-success";
+        document.getElementById("lobby-status").innerText = "Connected! Welcome.";
+        document.getElementById("lobby-status").className = "text-success";
+        document.getElementById("lobby-controls").style.display = "block";
+
+        // If we remember a token from a previous session, try to reconnect instantly!
+        if (mySecretToken) {
+            document.getElementById("lobby-status").innerText = "Reconnecting to your game...";
+            document.getElementById("lobby-controls").style.display = "none";
+            ws.send(JSON.stringify({ action: "RECONNECT", playerToken: mySecretToken }));
+        }
     };
 
     ws.onclose = () => {
-        document.getElementById("connection-status").innerText = "Disconnected.";
-        document.getElementById("connection-status").className = "text-danger";
+        alert("Connection to server lost. Please refresh the page.");
     };
 
     ws.onmessage = (event) => {
         const state = JSON.parse(event.data);
 
-        // Core UI Updates
+        // 1. ERROR HANDLING
+        if (state.errorMessage) {
+            alert(state.errorMessage);
+            // If the server says our token is expired or invalid, wipe it so we can start fresh.
+            if (state.errorMessage.includes("expired") || state.errorMessage.includes("rejoin")) {
+                localStorage.removeItem("dehlaToken");
+                mySecretToken = null;
+                document.getElementById("lobby-controls").style.display = "block";
+                document.getElementById("lobby-status").innerText = "Session expired. Join a new room.";
+            }
+            return;
+        }
+
+        // 2. SAVE OUR NEW TOKEN
+        if (state.myToken && state.myToken !== mySecretToken) {
+            mySecretToken = state.myToken;
+            localStorage.setItem("dehlaToken", mySecretToken);
+        }
+
+        // 3. TRANSITION FROM LOBBY TO GAME SCREEN
+        document.getElementById("lobby-screen").style.display = "none";
+        document.getElementById("game-screen").style.display = "block";
+        document.getElementById("display-room-code").innerText = `Code: ${state.roomCode}`;
+
+        // --- THE REST IS YOUR EXISTING GAME UI LOGIC ---
         document.getElementById("phase").innerText = state.currentPhase;
         document.getElementById("trump").innerText = state.trumpSuit;
         document.getElementById("scoreA").innerText = state.teamAScore;
         document.getElementById("scoreB").innerText = state.teamBScore;
 
-        const isMyTurn = (state.myName === state.currentTurnPlayerName);
-        const turnText = isMyTurn ? "🟩 YOUR TURN!" : `🟥 Waiting for ${state.currentTurnPlayerName}...`;
-        document.getElementById("turn-indicator").innerText = turnText;
-
+       // Change this to use state.isMyTurn!
+        document.getElementById("turn-indicator").innerText = state.isMyTurn ? "🟩 YOUR TURN!" : `🟥 Waiting for ${state.currentTurnPlayerName}...`;
         const tableDiv = document.getElementById("table-cards");
         tableDiv.innerHTML = `<h5 class="w-100 text-center mb-3 text-warning">Pile Waiting to be Swept: ${state.accumulatedPileSize} cards</h5>`;
         state.currentTrickCards.forEach(cardStr => {
@@ -171,39 +214,29 @@
         const handDiv = document.getElementById("my-hand");
         handDiv.innerHTML = "";
         state.myHand.forEach(cardStr => {
-            if (isMyTurn) {
+            // Change this from "if (isMyTurn)" to "if (state.isMyTurn)"
+            if (state.isMyTurn) {
                 handDiv.innerHTML += `<div class="playing-card" onclick="playCard('${cardStr}')">${cardStr}</div>`;
             } else {
                 handDiv.innerHTML += `<div class="playing-card" style="background-color: #bdc3c7; cursor: not-allowed; opacity: 0.7;">${cardStr}</div>`;
             }
         });
 
-        // --- SYNCHRONIZE BOTH SCOREBOARD TABLES ---
         if (state.historyTeamA) {
             const mainTbody = document.getElementById("main-scoreboard-body");
             const victoryTbody = document.getElementById("victory-scoreboard-body");
-
-            mainTbody.innerHTML = "";
-            victoryTbody.innerHTML = "";
-
+            mainTbody.innerHTML = ""; victoryTbody.innerHTML = "";
             for (let i = 0; i < state.historyTeamA.length; i++) {
                 const rowHTML = `<tr><td>Round ${i + 1}</td><td class="text-success">+${state.historyTeamA[i]}</td><td class="text-success">+${state.historyTeamB[i]}</td></tr>`;
-                mainTbody.innerHTML += rowHTML;
-                victoryTbody.innerHTML += rowHTML;
+                mainTbody.innerHTML += rowHTML; victoryTbody.innerHTML += rowHTML;
             }
-
             document.getElementById("history-total-A").innerText = state.matchScoreA || 0;
             document.getElementById("history-total-B").innerText = state.matchScoreB || 0;
         }
 
-        // --- VICTORY SCREEN LOGIC ---
         const victoryScreen = document.getElementById("victory-screen");
-
         if (state.currentPhase === "ROUND_OVER" || state.currentPhase === "MATCH_OVER") {
-
-            // Extract the current round's points directly from the last item in the history array!
-            let currentPtsA = 0;
-            let currentPtsB = 0;
+            let currentPtsA = 0, currentPtsB = 0;
             if (state.historyTeamA && state.historyTeamA.length > 0) {
                 currentPtsA = state.historyTeamA[state.historyTeamA.length - 1];
                 currentPtsB = state.historyTeamB[state.historyTeamB.length - 1];
@@ -219,18 +252,14 @@
                 document.getElementById("victory-buttons").style.display = "none";
                 const grandMsg = document.getElementById("game-over-message");
                 grandMsg.style.display = "block";
-
-                if (state.matchScoreA > state.matchScoreB) grandMsg.innerHTML = "🏆 TEAM A WINS THE MATCH! 🏆<br><br><button class='btn btn-outline-light mt-2' onclick='location.reload()'>Leave Table</button>";
-                else if (state.matchScoreB > state.matchScoreA) grandMsg.innerHTML = "🏆 TEAM B WINS THE MATCH! 🏆<br><br><button class='btn btn-outline-light mt-2' onclick='location.reload()'>Leave Table</button>";
-                else grandMsg.innerHTML = "🤝 IT'S A TIE! 🤝<br><br><button class='btn btn-outline-light mt-2' onclick='location.reload()'>Leave Table</button>";
-
+                if (state.matchScoreA > state.matchScoreB) grandMsg.innerHTML = "🏆 TEAM A WINS! 🏆<br><br><button class='btn btn-outline-light mt-2' onclick='leaveRoom()'>Leave Table</button>";
+                else if (state.matchScoreB > state.matchScoreA) grandMsg.innerHTML = "🏆 TEAM B WINS! 🏆<br><br><button class='btn btn-outline-light mt-2' onclick='leaveRoom()'>Leave Table</button>";
+                else grandMsg.innerHTML = "🤝 IT'S A TIE! 🤝<br><br><button class='btn btn-outline-light mt-2' onclick='leaveRoom()'>Leave Table</button>";
                 document.querySelector("#victory-screen h1").innerText = "Match Finished!";
-                document.getElementById("victory-title").innerText = "Final Results";
             } else {
                 document.getElementById("victory-buttons").style.display = "flex";
                 document.getElementById("game-over-message").style.display = "none";
                 document.querySelector("#victory-screen h1").innerText = "Round Over!";
-
                 let winnerText = "It's a Tie!";
                 if (state.teamAScore > state.teamBScore) winnerText = "Team A Wins the Round!";
                 if (state.teamBScore > state.teamAScore) winnerText = "Team B Wins the Round!";
@@ -238,14 +267,59 @@
                 if (state.teamBScore === 4) winnerText = "🏆 TEAM B ACHIEVED KOT! 🏆";
                 document.getElementById("victory-title").innerText = winnerText;
             }
-
             victoryScreen.style.setProperty("display", "flex", "important");
         } else {
             victoryScreen.style.setProperty("display", "none", "important");
         }
     };
 
-    // UI Interactions
+    // --- LOBBY ACTIONS ---
+
+    function createRoom() {
+        const name = document.getElementById("player-name").value.trim();
+
+        // Validation: Stop and alert if the name is blank
+        if (!name) {
+            alert("Please enter your name to create a room!");
+            return;
+        }
+
+        ws.send(JSON.stringify({ action: "CREATE_ROOM", playerName: name }));
+    }
+
+    function joinRoom() {
+        const name = document.getElementById("player-name").value.trim();
+        const code = document.getElementById("join-code").value.trim().toUpperCase();
+
+        // Validation: Stop and alert if either field is blank
+        if (!name) {
+            alert("Please enter your name to join!");
+            return;
+        }
+        if (!code) {
+            alert("Please enter a 4-digit Room Code!");
+            return;
+        }
+
+        ws.send(JSON.stringify({ action: "JOIN_ROOM", playerName: name, roomCode: code }));
+    }
+
+   function leaveRoom() {
+        // 1. Tell the server to delete our seat!
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ action: "LEAVE_ROOM" }));
+        }
+
+        // 2. Wipe the token so we don't auto-reconnect
+        localStorage.removeItem("dehlaToken");
+
+        // 3. Give the server 100 milliseconds to process the message, then refresh
+        setTimeout(() => {
+            location.reload();
+        }, 100);
+    }
+
+    // --- GAME ACTIONS ---
     function toggleScoreboard() {
         const screen = document.getElementById("scoreboard-screen");
         screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none";
@@ -257,10 +331,7 @@
         }
     }
 
-    function playAgain() {
-        ws.send(JSON.stringify({ action: "PLAY_AGAIN" }));
-    }
-
+    function playAgain() { ws.send(JSON.stringify({ action: "PLAY_AGAIN" })); }
     function playCard(cardString) {
         const parts = cardString.split(" of ");
         ws.send(JSON.stringify({ action: "PLAY_CARD", suit: parts[1], rank: parts[0] }));

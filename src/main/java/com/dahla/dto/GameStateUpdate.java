@@ -8,7 +8,7 @@ public class GameStateUpdate {
 
     public String currentTurnPlayerName; // NEW: Whose turn is it?
     public String myName;                // NEW: Who am I?
-
+    public boolean isMyTurn; // The server will tell us exactly if we can play!
     public List<String> currentTrickCards;
     public int accumulatedPileSize;
     public List<String> myHand;
@@ -16,6 +16,10 @@ public class GameStateUpdate {
     public int teamBScore;
     public int matchScoreA;
     public int matchScoreB;
+    // --- LOBBY VARIABLES ---
+    public String roomCode;
+    public String myToken; // The secret ID the browser will save
+    public String errorMessage; // Useful for telling the UI "Room is full!"
     // Add these near your matchScore variables
     public List<Integer> historyTeamA;
     public List<Integer> historyTeamB;

@@ -18,8 +18,14 @@ import java.util.stream.Collectors;
 
 public class GameServer {
 
-    private static final Map<WsContext, Player> playerConnections = new ConcurrentHashMap<>();
-    private static final GameRoom gameRoom = new GameRoom("Room-Production");
+    // 1. Tracks all active rooms by their 4-digit code (e.g., "A7X2" -> GameRoom)
+    private static final Map<String, GameRoom> activeRooms = new ConcurrentHashMap<>();
+
+    // 2. Tracks every player on the server by their Secret Token (Token -> Player)
+    private static final Map<String, Player> globalPlayers = new ConcurrentHashMap<>();
+
+    // 3. Tracks which Token belongs to which live WebSocket connection
+    private static final Map<WsContext, String> connectionToToken = new ConcurrentHashMap<>();
     private static final ObjectMapper jsonMapper = new ObjectMapper();
 
     public static void main(String[] args) {
@@ -32,94 +38,192 @@ public class GameServer {
 
             ws.onConnect(ctx -> {
                 ctx.session.setIdleTimeout(Duration.ofMinutes(30));
-                if (playerConnections.size() >= 4) {
-                    ctx.session.close(1000, "Room is full!");
-                    return;
-                }
-
-                Team assignedTeam = (playerConnections.size() % 2 == 0) ? Team.TEAM_A : Team.TEAM_B;
-                Player newPlayer = new Player(ctx.getSessionId(), "Player " + (playerConnections.size() + 1), assignedTeam);
-
-                playerConnections.put(ctx, newPlayer);
-                gameRoom.addPlayer(newPlayer);
-                System.out.println(newPlayer.getName() + " connected!");
-
-                if (playerConnections.size() == 4) {
-                    System.out.println("4 Players joined. Starting game!");
-                    gameRoom.startGame();
-                    broadcastGameState();
-                }
+                // We no longer assign them to a room immediately. We wait for them to click Create or Join!
             });
 
             ws.onMessage(ctx -> {
-                if (gameRoom.getCurrentPhase() == GamePhase.WAITING_FOR_PLAYERS) return;
-
-                Player player = playerConnections.get(ctx);
                 try {
                     PlayerAction action = jsonMapper.readValue(ctx.message(), PlayerAction.class);
 
-                    if ("PLAY_CARD".equals(action.action)) {
-                        Card cardToPlay = player.getHand().stream()
-                                .filter(c -> c.getSuit().name().equals(action.suit) && c.getRank().name().equals(action.rank))
-                                .findFirst()
-                                .orElseThrow(() -> new IllegalArgumentException("Card not found in hand!"));
+                    // ==========================================
+                    // 1. LOBBY SYSTEM: CREATE & JOIN
+                    // ==========================================
+                    if ("CREATE_ROOM".equals(action.action)) {
+                        String newCode = generateRoomCode();
+                        GameRoom newRoom = new GameRoom(newCode);
+                        activeRooms.put(newCode, newRoom);
 
-                        gameRoom.playCard(player, cardToPlay);
-                        broadcastGameState();
+                        String token = generateToken();
+                        Player host = new Player(token, action.playerName, Team.TEAM_A);
+
+                        globalPlayers.put(token, host);
+                        connectionToToken.put(ctx, token);
+                        newRoom.addPlayer(host);
+
+                        broadcastToRoom(newRoom);
                     }
-                    else if ("PLAY_AGAIN".equals(action.action)) {
-                        gameRoom.playAnotherRound();
-                        broadcastGameState();
+                    else if ("JOIN_ROOM".equals(action.action)) {
+                        GameRoom targetRoom = activeRooms.get(action.roomCode);
+                        if (targetRoom == null) {
+                            ctx.send("{\"errorMessage\": \"Room not found!\"}");
+                            return;
+                        }
+                        if (targetRoom.getPlayers().size() >= 4) {
+                            ctx.send("{\"errorMessage\": \"Room is full!\"}");
+                            return;
+                        }
+
+                        // Determine team (A, B, A, B)
+                        Team assignedTeam = (targetRoom.getPlayers().size() % 2 == 0) ? Team.TEAM_A : Team.TEAM_B;
+                        String token = generateToken();
+                        Player joinedPlayer = new Player(token, action.playerName, assignedTeam);
+
+                        globalPlayers.put(token, joinedPlayer);
+                        connectionToToken.put(ctx, token);
+                        targetRoom.addPlayer(joinedPlayer);
+
+                        if (targetRoom.getPlayers().size() == 4) {
+                            targetRoom.startGame();
+                        }
+                        broadcastToRoom(targetRoom);
                     }
-                    else if ("FINISH_GAME".equals(action.action)) {
-                        gameRoom.finishMatch();
-                        broadcastGameState();
+                    // ==========================================
+                    // 2. RECONNECTION SYSTEM
+                    // ==========================================
+                    else if ("RECONNECT".equals(action.action)) {
+                        Player returningPlayer = globalPlayers.get(action.playerToken);
+                        if (returningPlayer != null) {
+                            // Link their new browser connection to their old token!
+                            connectionToToken.put(ctx, action.playerToken);
+                            GameRoom theirRoom = findRoomForPlayer(returningPlayer);
+                            if (theirRoom != null) {
+                                broadcastToRoom(theirRoom);
+                                return;
+                            }
+                        }
+                        ctx.send("{\"errorMessage\": \"Session expired. Please rejoin.\"}");
+                    }
+                    // ==========================================
+                    // 3. IN-GAME ACTIONS (Play Card, Play Again, Finish)
+                    // ==========================================
+                    else {
+                        String token = connectionToToken.get(ctx);
+                        if (token == null) return; // Unregistered user trying to play
+
+                        Player player = globalPlayers.get(token);
+                        GameRoom room = findRoomForPlayer(player);
+                        if (room == null) return;
+
+                        if ("PLAY_CARD".equals(action.action)) {
+                            Card cardToPlay = player.getHand().stream()
+                                    .filter(c -> c.getSuit().name().equals(action.suit) && c.getRank().name().equals(action.rank))
+                                    .findFirst()
+                                    .orElseThrow(() -> new IllegalArgumentException("Card not found!"));
+
+                            room.playCard(player, cardToPlay);
+                            broadcastToRoom(room);
+                        }
+                        else if ("PLAY_AGAIN".equals(action.action)) {
+                            room.playAnotherRound();
+                            broadcastToRoom(room);
+                        }
+                        else if ("FINISH_GAME".equals(action.action)) {
+                            room.finishMatch();
+                            broadcastToRoom(room);
+                        }
+                        else if ("LEAVE_ROOM".equals(action.action)) {
+                            room.removePlayer(player);
+                            globalPlayers.remove(token);
+                            connectionToToken.remove(ctx);
+
+                            // Memory cleanup: If the room is now empty, delete the room from the server!
+                            if (room.getPlayers().isEmpty()) {
+                                activeRooms.remove(room.getRoomId());
+                                System.out.println("Room " + room.getRoomId() + " closed (empty).");
+                            } else {
+                                broadcastToRoom(room); // Update the remaining players' screens
+                            }
+                        }
                     }
                 } catch (Exception e) {
-                    System.err.println("Move error from " + player.getName() + ": " + e.getMessage());
+                    System.err.println("Server Error: " + e.getMessage());
                 }
             });
 
             ws.onClose(ctx -> {
-                Player disconnected = playerConnections.remove(ctx);
-                if (disconnected != null) System.out.println(disconnected.getName() + " disconnected.");
+                String token = connectionToToken.remove(ctx); // Always drop the walkie-talkie
+
+                if (token != null) {
+                    Player player = globalPlayers.get(token);
+                    if (player != null) {
+                        GameRoom room = findRoomForPlayer(player);
+
+                        // AUTO-KICK LOGIC: If the game hasn't started yet, delete them completely!
+                        if (room != null && room.getCurrentPhase() == GamePhase.WAITING_FOR_PLAYERS) {
+                            room.removePlayer(player);
+                            globalPlayers.remove(token);
+                            System.out.println(player.getName() + " left the lobby.");
+
+                            if (room.getPlayers().isEmpty()) {
+                                activeRooms.remove(room.getRoomId());
+                            } else {
+                                broadcastToRoom(room);
+                            }
+                        } else {
+                            // If the game HAS started, keep their seat warm!
+                            System.out.println(player.getName() + " disconnected (Seat saved for reconnect).");
+                        }
+                    }
+                }
             });
         });
     }
 
-    private static void broadcastGameState() {
-        for (Map.Entry<WsContext, Player> entry : playerConnections.entrySet()) {
+    private static void broadcastToRoom(GameRoom room) {
+        // Loop through every active internet connection on the server
+        for (Map.Entry<WsContext, String> entry : connectionToToken.entrySet()) {
             WsContext connection = entry.getKey();
-            Player player = entry.getValue();
+            String token = entry.getValue();
+            Player player = globalPlayers.get(token);
+
+            // SECURITY CHECK: Only send data if this connection belongs to a player in THIS specific room
+            if (player == null || !room.getPlayers().contains(player)) {
+                continue;
+            }
 
             GameStateUpdate update = new GameStateUpdate();
-            update.currentPhase = gameRoom.getCurrentPhase().name();
-            update.trumpSuit = gameRoom.getTrumpSuit() != null ? gameRoom.getTrumpSuit().name() : "NOT YET DISCOVERED";
+
+            // --- NEW LOBBY DATA ---
+            update.roomCode = room.getRoomId();
+            update.myToken = token; // Sending the secret ID back so their browser can save it!
+            update.errorMessage = null;
+
+            // --- EXISTING GAME DATA ---
+            update.currentPhase = room.getCurrentPhase().name();
+            update.trumpSuit = room.getTrumpSuit() != null ? room.getTrumpSuit().name() : "NOT YET DISCOVERED";
             update.myName = player.getName();
-            update.currentTurnPlayerName = gameRoom.getCurrentTurnPlayer() != null ?
-                    gameRoom.getCurrentTurnPlayer().getName() : "Waiting...";
-            // Send the cards currently being played in the middle of the table!
-            update.currentTrickCards = gameRoom.getCurrentTrick().getTableCards().values().stream()
+            update.currentTurnPlayerName = room.getCurrentTurnPlayer() != null ? room.getCurrentTurnPlayer().getName() : "Waiting...";
+            // Only the player whose object matches the current turn player gets "true"
+            update.isMyTurn = (room.getCurrentTurnPlayer() != null && room.getCurrentTurnPlayer().equals(player));
+
+            update.currentTrickCards = room.getCurrentTrick().getTableCards().values().stream()
                     .map(Card::toString)
                     .collect(Collectors.toList());
-
-            // Send the size of the un-swept pile
-            update.accumulatedPileSize = gameRoom.getTableAccumulator().size();
+            update.accumulatedPileSize = room.getTableAccumulator().size();
 
             update.myHand = player.getHand().stream()
                     .map(Card::toString)
                     .collect(Collectors.toList());
 
-            update.teamAScore = gameRoom.getTeamADehlasCount();
-            update.teamBScore = gameRoom.getTeamBDehlasCount();
-            update.matchScoreA = gameRoom.getMatchPointsTeamA();
-            update.matchScoreB = gameRoom.getMatchPointsTeamB();
-
-            update.historyTeamA = gameRoom.getHistoryTeamA();
-            update.historyTeamB = gameRoom.getHistoryTeamB();
+            // --- SCORES & HISTORY ---
+            update.teamAScore = room.getTeamADehlasCount();
+            update.teamBScore = room.getTeamBDehlasCount();
+            update.matchScoreA = room.getMatchPointsTeamA();
+            update.matchScoreB = room.getMatchPointsTeamB();
+            update.historyTeamA = room.getHistoryTeamA();
+            update.historyTeamB = room.getHistoryTeamB();
 
             try {
-                // BUG FIX: Only send data if the tab is still open to prevent server crashes
                 if (connection.session.isOpen()) {
                     connection.send(jsonMapper.writeValueAsString(update));
                 }
@@ -127,5 +231,22 @@ public class GameServer {
                 System.err.println("Failed to send state to a player.");
             }
         }
+    }
+    // Generates a random 4-digit code (e.g., "7392")
+    private static String generateRoomCode() {
+        return String.format("%04d", new java.util.Random().nextInt(10000));
+    }
+
+    // Generates an un-guessable secret token for the player
+    private static String generateToken() {
+        return java.util.UUID.randomUUID().toString();
+    }
+
+    // Finds which room a specific player is sitting in
+    private static GameRoom findRoomForPlayer(Player player) {
+        for (GameRoom room : activeRooms.values()) {
+            if (room.getPlayers().contains(player)) return room;
+        }
+        return null;
     }
 }

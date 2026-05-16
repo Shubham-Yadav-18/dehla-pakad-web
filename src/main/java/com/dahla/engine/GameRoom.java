@@ -3,6 +3,7 @@ package com.dahla.engine;
 import com.dahla.model.*;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -236,6 +237,9 @@ public class GameRoom {
     public void finishMatch() {
         this.currentPhase = GamePhase.MATCH_OVER; // We are adding a new phase!
     }
+    public void removePlayer(Player player) {
+        this.players.remove(player);
+    }
 
     // Getters
     public GamePhase getCurrentPhase() { return currentPhase; }
@@ -246,6 +250,7 @@ public class GameRoom {
     public int getTeamBDehlasCount() { return teamBDehlasCount; }
     public Trick getCurrentTrick() { return currentTrick; }
     public Player getCurrentTurnPlayer() { return currentTurnPlayer; }
+    public String getRoomId(){ return  roomId;}
         public int getTeamAFinalPoints() { return teamAFinalPoints; }
         public int getTeamBFinalPoints() { return teamBFinalPoints; }
        public int getMatchPointsTeamA(){ return matchPointsTeamA;}
@@ -253,4 +258,6 @@ public class GameRoom {
     // Add their getters at the very bottom of the file:
     public List<Integer> getHistoryTeamA() { return historyTeamA; }
     public List<Integer> getHistoryTeamB() { return historyTeamB; }
+
+    public List<Player> getPlayers() {return players;}
 }
