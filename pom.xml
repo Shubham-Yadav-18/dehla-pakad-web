@@ -42,7 +42,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.dahla.GameServer</mainClass>
+                            <mainClass>com.dahla.server.GameServer</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
