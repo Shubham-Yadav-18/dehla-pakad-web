@@ -67,6 +67,14 @@ public class GameServer {
                         gameRoom.playCard(player, cardToPlay);
                         broadcastGameState();
                     }
+                    else if ("PLAY_AGAIN".equals(action.action)) {
+                        gameRoom.playAnotherRound();
+                        broadcastGameState();
+                    }
+                    else if ("FINISH_GAME".equals(action.action)) {
+                        gameRoom.finishMatch();
+                        broadcastGameState();
+                    }
                 } catch (Exception e) {
                     System.err.println("Move error from " + player.getName() + ": " + e.getMessage());
                 }
@@ -104,6 +112,11 @@ public class GameServer {
 
             update.teamAScore = gameRoom.getTeamADehlasCount();
             update.teamBScore = gameRoom.getTeamBDehlasCount();
+            update.matchScoreA = gameRoom.getMatchPointsTeamA();
+            update.matchScoreB = gameRoom.getMatchPointsTeamB();
+
+            update.historyTeamA = gameRoom.getHistoryTeamA();
+            update.historyTeamB = gameRoom.getHistoryTeamB();
 
             try {
                 // BUG FIX: Only send data if the tab is still open to prevent server crashes

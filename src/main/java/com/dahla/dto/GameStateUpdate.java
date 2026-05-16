@@ -14,6 +14,11 @@ public class GameStateUpdate {
     public List<String> myHand;
     public int teamAScore;
     public int teamBScore;
+    public int matchScoreA;
+    public int matchScoreB;
+    // Add these near your matchScore variables
+    public List<Integer> historyTeamA;
+    public List<Integer> historyTeamB;
 
     public GameStateUpdate() {}
 }

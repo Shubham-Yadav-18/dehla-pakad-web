@@ -17,7 +17,14 @@ public class GameRoom {
     private Player lastWinningPlayerForSweep; // Now we track the specific player!
     private int teamAFinalPoints;
     private int teamBFinalPoints;
+
+    private int matchPointsTeamA = 0;
+    private int matchPointsTeamB = 0;
     private final List<Card> tableAccumulator;
+
+    private List<Integer> historyTeamA = new java.util.ArrayList<>();
+    private List<Integer> historyTeamB = new java.util.ArrayList<>();
+
 
 
     private int teamADehlasCount;
@@ -164,8 +171,16 @@ public class GameRoom {
 
             this.teamAFinalPoints = finalScores.get(Team.TEAM_A);
             this.teamBFinalPoints = finalScores.get(Team.TEAM_B);
+            // ADD TO THE TOTAL MATCH SCORE:
+            this.matchPointsTeamA += this.teamAFinalPoints;
+            this.matchPointsTeamB += this.teamBFinalPoints;
 
-            System.out.println("Round Over! Final Points -> Team A: " + teamAFinalPoints + " | Team B: " + teamBFinalPoints);
+
+            // ADD TO HISTORY LOG:
+            this.historyTeamA.add(this.teamAFinalPoints);
+            this.historyTeamB.add(this.teamBFinalPoints);
+
+            System.out.println("Round Over! Final Points -> Team A: " + matchPointsTeamA + " | Team B: " + matchPointsTeamB);
         }
     }
 
@@ -197,6 +212,30 @@ public class GameRoom {
         }
         tableAccumulator.clear();
     }
+    public void playAnotherRound() {
+        if (this.currentPhase != GamePhase.ROUND_OVER) return;
+
+        // --- RESET ALL ROUND VARIABLES ---
+        this.teamADehlasCount = 0;
+        this.teamBDehlasCount = 0;
+
+        // ADD THESE TWO LINES: Wipe the round points clean for the new hand!
+        this.teamAFinalPoints = 0;
+        this.teamBFinalPoints = 0;
+
+        this.trumpSuit = null;
+        this.teamWhoCalledKot = null;
+        this.lastTrickWinner = null;
+        this.lastWinningPlayerForSweep = null;
+        this.tableAccumulator.clear();
+        this.currentTrick = new Trick();
+
+        // Deal a brand new deck and start!
+        startGame();
+    }
+    public void finishMatch() {
+        this.currentPhase = GamePhase.MATCH_OVER; // We are adding a new phase!
+    }
 
     // Getters
     public GamePhase getCurrentPhase() { return currentPhase; }
@@ -209,4 +248,9 @@ public class GameRoom {
     public Player getCurrentTurnPlayer() { return currentTurnPlayer; }
         public int getTeamAFinalPoints() { return teamAFinalPoints; }
         public int getTeamBFinalPoints() { return teamBFinalPoints; }
+       public int getMatchPointsTeamA(){ return matchPointsTeamA;}
+       public int getMatchPointsTeamB(){ return matchPointsTeamB;}
+    // Add their getters at the very bottom of the file:
+    public List<Integer> getHistoryTeamA() { return historyTeamA; }
+    public List<Integer> getHistoryTeamB() { return historyTeamB; }
 }

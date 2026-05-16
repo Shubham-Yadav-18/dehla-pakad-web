@@ -28,39 +28,109 @@
 </head>
 <body>
 
+<div id="victory-screen" class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style="background: rgba(0,0,0,0.8); z-index: 1000; display: none !important;">
+    <div class="bg-dark text-white p-4 rounded text-center border border-warning" style="min-width: 450px; max-height: 90vh; overflow-y: auto;">
+        <h1 class="text-warning mb-3">Round Over!</h1>
+        <h4 id="victory-title" class="mb-4">Calculating...</h4>
+
+        <div class="d-flex justify-content-around mb-3">
+            <div class="bg-secondary p-2 rounded" style="width: 45%;">
+                <h5 class="text-info">Team A (This Round)</h5>
+                <p class="m-0">Dehlas: <span id="modal-dehlasA" class="fw-bold">0</span></p>
+                <p class="m-0">Points Earned: <span class="text-success fw-bold">+<span id="modal-pointsA">0</span></span></p>
+            </div>
+            <div class="bg-secondary p-2 rounded" style="width: 45%;">
+                <h5 class="text-info">Team B (This Round)</h5>
+                <p class="m-0">Dehlas: <span id="modal-dehlasB" class="fw-bold">0</span></p>
+                <p class="m-0">Points Earned: <span class="text-success fw-bold">+<span id="modal-pointsB">0</span></span></p>
+            </div>
+        </div>
+
+        <hr class="border-secondary">
+        <h5 class="text-start mb-2">Full Match History:</h5>
+        <div class="mb-3 border border-secondary" style="max-height: 150px; overflow-y: auto;">
+            <table class="table table-dark table-sm table-striped mb-0">
+                <thead class="position-sticky top-0 bg-dark">
+                <tr>
+                    <th>Round</th>
+                    <th>Team A</th>
+                    <th>Team B</th>
+                </tr>
+                </thead>
+                <tbody id="victory-scoreboard-body">
+                </tbody>
+            </table>
+        </div>
+
+        <h4 class="mb-4 text-warning">Grand Total: <span id="modal-match-score" class="text-white">0 - 0</span></h4>
+
+        <div id="victory-buttons" class="d-flex gap-2">
+            <button class="btn btn-lg btn-success w-50" onclick="playAgain()">Play Next Round</button>
+            <button class="btn btn-lg btn-danger w-50" onclick="finishGame()">Finish Game</button>
+        </div>
+
+        <div id="game-over-message" class="text-success fs-3 fw-bold mt-3" style="display: none;"></div>
+    </div>
+</div>
+
+<div id="scoreboard-screen" class="position-fixed top-0 start-0 w-100 h-100 justify-content-center align-items-center" style="background: rgba(0,0,0,0.8); z-index: 1000; display: none;">
+    <div class="bg-dark text-white p-4 rounded text-center border border-info" style="min-width: 400px; max-height: 80vh; overflow-y: auto;">
+        <h2 class="text-info mb-3">Match History</h2>
+        <table class="table table-dark table-striped">
+            <thead>
+            <tr>
+                <th>Round</th>
+                <th>Team A Points</th>
+                <th>Team B Points</th>
+            </tr>
+            </thead>
+            <tbody id="main-scoreboard-body">
+            </tbody>
+            <tfoot>
+            <tr class="fw-bold fs-5 text-warning">
+                <td>TOTAL</td>
+                <td id="history-total-A">0</td>
+                <td id="history-total-B">0</td>
+            </tr>
+            </tfoot>
+        </table>
+        <button class="btn btn-secondary mt-3 w-100" onclick="toggleScoreboard()">Close Scoreboard</button>
+    </div>
+</div>
+
 <div class="container">
     <div class="row mb-3">
         <div class="col-md-8">
-            <h2>Dehla Pakad Table</h2>
+            <div class="d-flex align-items-center gap-3 mb-2">
+                <h2 class="m-0">Dehla Pakad Table</h2>
+                <button class="btn btn-outline-light btn-sm" onclick="toggleScoreboard()">📊 View Scoreboard</button>
+            </div>
+
             <p>Status: <span id="connection-status" class="text-warning">Connecting...</span></p>
             <p>Phase: <strong id="phase" class="text-info">WAITING</strong> | Trump: <strong id="trump" class="text-danger">NONE</strong></p>
             <p class="fs-4">Turn: <span id="turn-indicator" class="fw-bold text-warning">Waiting...</span></p>
         </div>
         <div class="col-md-4 text-end">
             <div class="card bg-dark text-white p-2">
-                <h5>Scoreboard (Dehlas)</h5>
+                <h5>Current Round (Dehlas)</h5>
                 <p class="m-0">Team A: <span id="scoreA">0</span></p>
                 <p class="m-0">Team B: <span id="scoreB">0</span></p>
             </div>
         </div>
     </div>
 
-    <!-- The Center Table (Accumulator & Current Trick) -->
     <div class="row mb-4">
         <div class="col-12">
             <h4>Table</h4>
             <div id="table-cards" class="table-area d-flex flex-wrap align-items-center justify-content-center">
-                <!-- Played cards will appear here -->
             </div>
         </div>
     </div>
 
-    <!-- The Player's Hand -->
     <div class="row">
         <div class="col-12">
             <h4>My Hand</h4>
             <div id="my-hand" class="d-flex flex-wrap">
-                <!-- Player's cards will appear here -->
             </div>
         </div>
     </div>
@@ -82,19 +152,18 @@
     ws.onmessage = (event) => {
         const state = JSON.parse(event.data);
 
+        // Core UI Updates
         document.getElementById("phase").innerText = state.currentPhase;
         document.getElementById("trump").innerText = state.trumpSuit;
         document.getElementById("scoreA").innerText = state.teamAScore;
         document.getElementById("scoreB").innerText = state.teamBScore;
 
-        // --- TURN LOGIC ---
         const isMyTurn = (state.myName === state.currentTurnPlayerName);
         const turnText = isMyTurn ? "🟩 YOUR TURN!" : `🟥 Waiting for ${state.currentTurnPlayerName}...`;
         document.getElementById("turn-indicator").innerText = turnText;
 
         const tableDiv = document.getElementById("table-cards");
         tableDiv.innerHTML = `<h5 class="w-100 text-center mb-3 text-warning">Pile Waiting to be Swept: ${state.accumulatedPileSize} cards</h5>`;
-
         state.currentTrickCards.forEach(cardStr => {
             tableDiv.innerHTML += `<div class="playing-card" style="cursor: default; border: 2px solid #3498db;">${cardStr}</div>`;
         });
@@ -102,23 +171,99 @@
         const handDiv = document.getElementById("my-hand");
         handDiv.innerHTML = "";
         state.myHand.forEach(cardStr => {
-            // If it's my turn, the card is clickable and white. If not, it's greyed out and unclickable!
             if (isMyTurn) {
                 handDiv.innerHTML += `<div class="playing-card" onclick="playCard('${cardStr}')">${cardStr}</div>`;
             } else {
                 handDiv.innerHTML += `<div class="playing-card" style="background-color: #bdc3c7; cursor: not-allowed; opacity: 0.7;">${cardStr}</div>`;
             }
         });
+
+        // --- SYNCHRONIZE BOTH SCOREBOARD TABLES ---
+        if (state.historyTeamA) {
+            const mainTbody = document.getElementById("main-scoreboard-body");
+            const victoryTbody = document.getElementById("victory-scoreboard-body");
+
+            mainTbody.innerHTML = "";
+            victoryTbody.innerHTML = "";
+
+            for (let i = 0; i < state.historyTeamA.length; i++) {
+                const rowHTML = `<tr><td>Round ${i + 1}</td><td class="text-success">+${state.historyTeamA[i]}</td><td class="text-success">+${state.historyTeamB[i]}</td></tr>`;
+                mainTbody.innerHTML += rowHTML;
+                victoryTbody.innerHTML += rowHTML;
+            }
+
+            document.getElementById("history-total-A").innerText = state.matchScoreA || 0;
+            document.getElementById("history-total-B").innerText = state.matchScoreB || 0;
+        }
+
+        // --- VICTORY SCREEN LOGIC ---
+        const victoryScreen = document.getElementById("victory-screen");
+
+        if (state.currentPhase === "ROUND_OVER" || state.currentPhase === "MATCH_OVER") {
+
+            // Extract the current round's points directly from the last item in the history array!
+            let currentPtsA = 0;
+            let currentPtsB = 0;
+            if (state.historyTeamA && state.historyTeamA.length > 0) {
+                currentPtsA = state.historyTeamA[state.historyTeamA.length - 1];
+                currentPtsB = state.historyTeamB[state.historyTeamB.length - 1];
+            }
+
+            document.getElementById("modal-dehlasA").innerText = state.teamAScore;
+            document.getElementById("modal-dehlasB").innerText = state.teamBScore;
+            document.getElementById("modal-pointsA").innerText = currentPtsA;
+            document.getElementById("modal-pointsB").innerText = currentPtsB;
+            document.getElementById("modal-match-score").innerText = `Team A: ${state.matchScoreA || 0} | Team B: ${state.matchScoreB || 0}`;
+
+            if (state.currentPhase === "MATCH_OVER") {
+                document.getElementById("victory-buttons").style.display = "none";
+                const grandMsg = document.getElementById("game-over-message");
+                grandMsg.style.display = "block";
+
+                if (state.matchScoreA > state.matchScoreB) grandMsg.innerHTML = "🏆 TEAM A WINS THE MATCH! 🏆<br><br><button class='btn btn-outline-light mt-2' onclick='location.reload()'>Leave Table</button>";
+                else if (state.matchScoreB > state.matchScoreA) grandMsg.innerHTML = "🏆 TEAM B WINS THE MATCH! 🏆<br><br><button class='btn btn-outline-light mt-2' onclick='location.reload()'>Leave Table</button>";
+                else grandMsg.innerHTML = "🤝 IT'S A TIE! 🤝<br><br><button class='btn btn-outline-light mt-2' onclick='location.reload()'>Leave Table</button>";
+
+                document.querySelector("#victory-screen h1").innerText = "Match Finished!";
+                document.getElementById("victory-title").innerText = "Final Results";
+            } else {
+                document.getElementById("victory-buttons").style.display = "flex";
+                document.getElementById("game-over-message").style.display = "none";
+                document.querySelector("#victory-screen h1").innerText = "Round Over!";
+
+                let winnerText = "It's a Tie!";
+                if (state.teamAScore > state.teamBScore) winnerText = "Team A Wins the Round!";
+                if (state.teamBScore > state.teamAScore) winnerText = "Team B Wins the Round!";
+                if (state.teamAScore === 4) winnerText = "🏆 TEAM A ACHIEVED KOT! 🏆";
+                if (state.teamBScore === 4) winnerText = "🏆 TEAM B ACHIEVED KOT! 🏆";
+                document.getElementById("victory-title").innerText = winnerText;
+            }
+
+            victoryScreen.style.setProperty("display", "flex", "important");
+        } else {
+            victoryScreen.style.setProperty("display", "none", "important");
+        }
     };
+
+    // UI Interactions
+    function toggleScoreboard() {
+        const screen = document.getElementById("scoreboard-screen");
+        screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none";
+    }
+
+    function finishGame() {
+        if(confirm("Are you sure you want to end the entire game and declare a winner?")) {
+            ws.send(JSON.stringify({ action: "FINISH_GAME" }));
+        }
+    }
+
+    function playAgain() {
+        ws.send(JSON.stringify({ action: "PLAY_AGAIN" }));
+    }
 
     function playCard(cardString) {
         const parts = cardString.split(" of ");
-        const actionJson = {
-            action: "PLAY_CARD",
-            suit: parts[1],
-            rank: parts[0]
-        };
-        ws.send(JSON.stringify(actionJson));
+        ws.send(JSON.stringify({ action: "PLAY_CARD", suit: parts[1], rank: parts[0] }));
     }
 </script>
 
