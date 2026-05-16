@@ -2,52 +2,129 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dehla Pakad - Live</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dehla Pakad - Live Casino</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #2c3e50; color: white; padding-top: 20px; }
-        .playing-card {
-            display: inline-block;
-            width: 100px;
-            height: 140px;
-            background-color: white;
-            color: black;
-            border-radius: 8px;
-            margin: 5px;
-            padding: 10px;
-            text-align: center;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
-            transition: transform 0.2s;
+        /* 1. THE CASINO ATMOSPHERE */
+        body {
+            background: radial-gradient(circle at center, #1e5c3a 0%, #0a2e18 100%);
+            color: white;
+            margin: 0;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: manipulation; /* Prevents double-tap zooming on phones */
         }
-        .playing-card:hover { transform: translateY(-10px); }
-        .table-area { min-height: 180px; background-color: #34495e; border-radius: 10px; padding: 20px; }
 
-        /* Hide game screen by default */
-        #game-screen { display: none; }
+        #game-screen { display: none; height: 100%; position: relative; }
+
+        /* 2. FORCE LANDSCAPE ON MOBILE */
+        #rotate-prompt {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0a2e18; z-index: 9999; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+        }
+        @media screen and (orientation: portrait) and (max-width: 768px) {
+            #lobby-screen, #game-screen, .modal { display: none !important; }
+            #rotate-prompt { display: flex !important; }
+        }
+
+        /* 3. MINIMALIST HUD */
+        .hud-badge {
+            background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.2);
+            padding: 5px 12px; border-radius: 8px; font-weight: bold; z-index: 50;
+        }
+        #trump-display { position: absolute; top: 10px; left: 10px; }
+        #menu-button { position: absolute; top: 10px; right: 10px; cursor: pointer; }
+
+        /* 4. CENTER TABLE & ANTI-CLOCKWISE TOSS ANIMATIONS */
+        .table-center {
+            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
+            width: 280px; height: 280px; border-radius: 50%;
+            background: rgba(0, 0, 0, 0.2); border: 2px solid rgba(255, 255, 255, 0.05);
+        }
+
+        @keyframes toss-bottom { 0% { transform: translate(0, 200px) scale(0.5); opacity: 0; } 100% { transform: translate(0, 30px) rotate(-10deg) scale(1); opacity: 1; } }
+        @keyframes toss-right { 0% { transform: translate(200px, 0) scale(0.5); opacity: 0; } 100% { transform: translate(40px, 0) rotate(20deg) scale(1); opacity: 1; } }
+        @keyframes toss-top { 0% { transform: translate(0, -200px) scale(0.5); opacity: 0; } 100% { transform: translate(0, -30px) rotate(10deg) scale(1); opacity: 1; } }
+        @keyframes toss-left { 0% { transform: translate(-200px, 0) scale(0.5); opacity: 0; } 100% { transform: translate(-40px, 0) rotate(-20deg) scale(1); opacity: 1; } }
+
+        /* 5. DYNAMIC PLAYER PODS */
+        .player-pod {
+            position: absolute; background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(255, 255, 255, 0.2); padding: 5px 15px;
+            border-radius: 20px; display: flex; align-items: center; gap: 8px;
+            font-weight: bold; font-size: 0.9rem; transition: all 0.3s ease; white-space: nowrap;
+        }
+        .pod-top { top: 10px; left: 50%; transform: translateX(-50%); }
+        .pod-left { top: 45%; left: 10px; transform: translateY(-50%); }
+        .pod-right { top: 45%; right: 10px; transform: translateY(-50%); }
+        .pod-bottom { bottom: 110px; left: 50%; transform: translateX(-50%); z-index: 5; } /* My Pod */
+
+        .active-turn {
+            border-color: #f1c40f; box-shadow: 0 0 15px rgba(241, 196, 15, 0.6);
+            animation: pulse-pod 1.5s infinite alternate;
+        }
+        .turn-indicator { width: 12px; height: 12px; border-radius: 50%; background: #555; }
+        .active-turn .turn-indicator { background: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
+
+        @keyframes pulse-pod { 0% { box-shadow: 0 0 10px rgba(241, 196, 15, 0.4); } 100% { box-shadow: 0 0 20px rgba(241, 196, 15, 0.8); } }
+
+        /* 6. THE PLAYER'S HAND & CARDS */
+        .my-hand-container {
+            position: absolute; bottom: -10px; left: 50%;
+            transform: translateX(-50%); display: flex; padding: 10px; z-index: 10;
+        }
+
+        .playing-card {
+            width: 70px; height: 105px; /* Mobile friendly sizing */
+            background-color: white; border-radius: 6px; box-shadow: 2px 4px 8px rgba(0,0,0,0.5);
+            position: relative; cursor: pointer;
+            transition: transform 0.2s; margin-left: -35px; /* Tighter overlap for mobile */
+            font-weight: bold;
+        }
+        .playing-card:first-child { margin-left: 0; }
+        .playing-card:hover { transform: translateY(-15px); z-index: 100; }
+
+        .card-red { color: #e74c3c; } .card-black { color: #2c3e50; }
+        .card-disabled { cursor: not-allowed; opacity: 0.95; }
+        .card-disabled:hover { transform: none; }
+
+        .card-top { position: absolute; top: 2px; left: 4px; text-align: center; line-height: 1; font-size: 0.9rem; }
+        .card-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2rem; }
+        .card-bottom { position: absolute; bottom: 2px; right: 4px; text-align: center; transform: rotate(180deg); line-height: 1; font-size: 0.9rem; }
+
+        /* Tablet/Desktop Scale Up */
+        @media (min-width: 768px) {
+            .table-center { width: 350px; height: 350px; top: 50%; }
+            .playing-card { width: 85px; height: 125px; margin-left: -25px; }
+            .pod-bottom { bottom: 130px; }
+            .pod-left { top: 50%; left: 20px; }
+            .pod-right { top: 50%; right: 20px; }
+            .card-top, .card-bottom { font-size: 1.1rem; }
+            .card-center { font-size: 2.5rem; }
+        }
     </style>
 </head>
 <body>
 
-<div id="lobby-screen" class="container mt-5">
+<div id="rotate-prompt">
+    <h1 style="font-size: 4rem;">🔄</h1>
+    <h2 class="text-warning mt-3">Please Rotate Your Phone</h2>
+    <p class="text-white fs-5">Dehla Pakad is best played in Landscape Mode.</p>
+</div>
+
+<div id="lobby-screen" class="container mt-4">
     <div class="row justify-content-center text-center">
-        <div class="col-md-5 bg-dark p-5 rounded border border-info shadow-lg">
-            <h1 class="text-warning mb-4">Dehla Pakad</h1>
+        <div class="col-md-6 col-lg-5 bg-dark p-4 rounded border border-success shadow-lg">
+            <h1 class="text-warning mb-3">Dehla Pakad</h1>
             <p id="lobby-status" class="text-warning mb-4">Connecting to server...</p>
-
             <div id="lobby-controls" style="display: none;">
-                <input type="text" id="player-name" class="form-control mb-4 text-center fs-5" placeholder="Enter Your Name">
-
-                <button class="btn btn-success btn-lg w-100 mb-4" onclick="createRoom()">Create New Room</button>
-
-                <div class="d-flex align-items-center mb-4">
-                    <hr class="flex-grow-1 border-secondary">
-                    <span class="mx-3 text-secondary">OR</span>
-                    <hr class="flex-grow-1 border-secondary">
-                </div>
-
+                <input type="text" id="player-name" class="form-control mb-3 text-center fs-5" placeholder="Enter Your Name">
+                <button class="btn btn-success btn-lg w-100 mb-3" onclick="createRoom()">Create New Room</button>
+                <div class="d-flex align-items-center mb-3"><hr class="flex-grow-1 border-secondary"><span class="mx-3 text-secondary">OR</span><hr class="flex-grow-1 border-secondary"></div>
                 <input type="text" id="join-code" class="form-control mb-2 text-center fs-5 text-uppercase" placeholder="4-Digit Code" maxlength="4">
                 <button class="btn btn-info btn-lg w-100" onclick="joinRoom()">Join Room</button>
             </div>
@@ -55,288 +132,257 @@
     </div>
 </div>
 
-
-<div id="victory-screen" class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center" style="background: rgba(0,0,0,0.8); z-index: 1000; display: none !important;">
-    <div class="bg-dark text-white p-4 rounded text-center border border-warning" style="min-width: 450px; max-height: 90vh; overflow-y: auto;">
-        <h1 class="text-warning mb-3">Round Over!</h1>
-        <h4 id="victory-title" class="mb-4">Calculating...</h4>
-
-        <div class="d-flex justify-content-around mb-3">
-            <div class="bg-secondary p-2 rounded" style="width: 45%;">
-                <h5 class="text-info">Team A (This Round)</h5>
-                <p class="m-0">Dehlas: <span id="modal-dehlasA" class="fw-bold">0</span></p>
-                <p class="m-0">Points: <span class="text-success fw-bold">+<span id="modal-pointsA">0</span></span></p>
-            </div>
-            <div class="bg-secondary p-2 rounded" style="width: 45%;">
-                <h5 class="text-info">Team B (This Round)</h5>
-                <p class="m-0">Dehlas: <span id="modal-dehlasB" class="fw-bold">0</span></p>
-                <p class="m-0">Points: <span class="text-success fw-bold">+<span id="modal-pointsB">0</span></span></p>
+<div id="game-menu-modal" class="position-fixed top-0 start-0 w-100 h-100 justify-content-center align-items-center" style="background: rgba(0,0,0,0.8); z-index: 2000; display: none;">
+    <div class="bg-dark text-white p-4 rounded text-center border border-primary shadow-lg" style="width: 90%; max-width: 350px;">
+        <h3 class="text-warning mb-2">Game Menu</h3>
+        <p class="fs-5 mb-3">Room Code: <strong class="text-info" id="menu-room-code">####</strong></p>
+        <div class="card bg-secondary text-white p-2 mb-3">
+            <h6 class="mb-2 border-bottom border-dark pb-1">Current Round Dehlas</h6>
+            <div class="d-flex justify-content-between fs-6">
+                <span>Team A: <strong class="text-warning" id="menu-scoreA">0</strong></span>
+                <span>Team B: <strong class="text-warning" id="menu-scoreB">0</strong></span>
             </div>
         </div>
+        <button class="btn btn-outline-light w-100 mb-2" onclick="toggleScoreboard()">📊 Match Scoreboard</button>
+        <button class="btn btn-danger w-100 mb-2" onclick="leaveRoom()">🚪 Leave Game</button>
+        <button class="btn btn-secondary w-100 mt-2" onclick="toggleGameMenu()">Resume Game</button>
+    </div>
+</div>
 
-        <hr class="border-secondary">
-        <h5 class="text-start mb-2">Full Match History:</h5>
-        <div class="mb-3 border border-secondary" style="max-height: 150px; overflow-y: auto;">
-            <table class="table table-dark table-sm table-striped mb-0">
-                <thead class="position-sticky top-0 bg-dark">
-                <tr><th>Round</th><th>Team A</th><th>Team B</th></tr>
-                </thead>
-                <tbody id="victory-scoreboard-body"></tbody>
-            </table>
+<div id="victory-screen" class="position-fixed top-0 start-0 w-100 h-100 justify-content-center align-items-center" style="background: rgba(0,0,0,0.8); z-index: 1000; display: none !important;">
+    <div class="bg-dark text-white p-4 rounded text-center border border-warning" style="width: 95%; max-width: 450px; max-height: 95vh; overflow-y: auto;">
+        <h2 class="text-warning mb-2">Round Over!</h2>
+        <h5 id="victory-title" class="mb-3">Calculating...</h5>
+        <div class="d-flex justify-content-around mb-2">
+            <div class="bg-secondary p-2 rounded" style="width: 48%;"><h6 class="text-info m-0">Team A</h6><small>Dehlas: <span id="modal-dehlasA">0</span><br>Pts: <span class="text-success">+<span id="modal-pointsA">0</span></span></small></div>
+            <div class="bg-secondary p-2 rounded" style="width: 48%;"><h6 class="text-info m-0">Team B</h6><small>Dehlas: <span id="modal-dehlasB">0</span><br>Pts: <span class="text-success">+<span id="modal-pointsB">0</span></span></small></div>
         </div>
-
-        <h4 class="mb-4 text-warning">Grand Total: <span id="modal-match-score" class="text-white">0 - 0</span></h4>
-
+        <div class="mb-2 border border-secondary" style="max-height: 120px; overflow-y: auto;">
+            <table class="table table-dark table-sm table-striped m-0"><thead class="position-sticky top-0 bg-dark"><tr><th>Rnd</th><th>T-A</th><th>T-B</th></tr></thead><tbody id="victory-scoreboard-body"></tbody></table>
+        </div>
+        <h5 class="mb-3 text-warning">Total: <span id="modal-match-score" class="text-white">0 - 0</span></h5>
         <div id="victory-buttons" class="d-flex gap-2">
-            <button class="btn btn-lg btn-success w-50" onclick="playAgain()">Play Next Round</button>
-            <button class="btn btn-lg btn-danger w-50" onclick="finishGame()">Finish Game</button>
+            <button class="btn btn-success w-50" onclick="playAgain()">Next Round</button>
+            <button class="btn btn-danger w-50" onclick="finishGame()">End Game</button>
         </div>
-        <div id="game-over-message" class="text-success fs-3 fw-bold mt-3" style="display: none;"></div>
+        <div id="game-over-message" class="text-success fs-4 fw-bold mt-2" style="display: none;"></div>
+    </div>
+</div>
+<div id="scoreboard-screen" class="position-fixed top-0 start-0 w-100 h-100 justify-content-center align-items-center" style="background: rgba(0,0,0,0.8); z-index: 3000; display: none;">
+    <div class="bg-dark text-white p-4 rounded text-center border border-info" style="width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto;">
+        <h3 class="text-info mb-3">Match History</h3>
+        <table class="table table-dark table-striped"><thead><tr><th>Round</th><th>Team A</th><th>Team B</th></tr></thead><tbody id="main-scoreboard-body"></tbody><tfoot><tr class="fw-bold text-warning"><td>TOTAL</td><td id="history-total-A">0</td><td id="history-total-B">0</td></tr></tfoot></table>
+        <button class="btn btn-secondary mt-3 w-100" onclick="toggleScoreboard()">Close</button>
     </div>
 </div>
 
-<div id="scoreboard-screen" class="position-fixed top-0 start-0 w-100 h-100 justify-content-center align-items-center" style="background: rgba(0,0,0,0.8); z-index: 1000; display: none;">
-    <div class="bg-dark text-white p-4 rounded text-center border border-info" style="min-width: 400px; max-height: 80vh; overflow-y: auto;">
-        <h2 class="text-info mb-3">Match History</h2>
-        <table class="table table-dark table-striped">
-            <thead><tr><th>Round</th><th>Team A Points</th><th>Team B Points</th></tr></thead>
-            <tbody id="main-scoreboard-body"></tbody>
-            <tfoot>
-            <tr class="fw-bold fs-5 text-warning"><td>TOTAL</td><td id="history-total-A">0</td><td id="history-total-B">0</td></tr>
-            </tfoot>
-        </table>
-        <button class="btn btn-secondary mt-3 w-100" onclick="toggleScoreboard()">Close Scoreboard</button>
-    </div>
-</div>
+<div id="game-screen">
 
+    <div id="trump-display" class="hud-badge text-white">Trump: <span id="trump" class="text-danger">NONE</span></div>
+    <div id="menu-button" class="hud-badge text-white" onclick="toggleGameMenu()">⚙️ Menu</div>
 
-<div id="game-screen" class="container">
-    <div class="row mb-3 align-items-center">
-        <div class="col-md-8">
-            <div class="d-flex align-items-center gap-3 mb-2">
-                <h2 class="m-0">Dehla Pakad Table</h2>
-                <span class="badge bg-primary fs-5" id="display-room-code">Code: ####</span>
-                <button class="btn btn-outline-light btn-sm" onclick="toggleScoreboard()">📊 View Scoreboard</button>
-                <button class="btn btn-outline-danger btn-sm" onclick="leaveRoom()">🚪 Leave</button>
-            </div>
+    <div id="pod-me" class="player-pod pod-bottom"><div class="turn-indicator"></div> <span id="bottom-pod-name">Me</span></div>
+    <div id="pod-right" class="player-pod pod-right"><div class="turn-indicator"></div> <span id="right-pod-name">Waiting...</span></div>
+    <div id="pod-top" class="player-pod pod-top"><div class="turn-indicator"></div> <span id="top-pod-name">Waiting...</span></div>
+    <div id="pod-left" class="player-pod pod-left"><span id="left-pod-name">Waiting...</span> <div class="turn-indicator"></div></div>
 
-            <p>Phase: <strong id="phase" class="text-info">WAITING</strong> | Trump: <strong id="trump" class="text-danger">NONE</strong></p>
-            <p class="fs-4">Turn: <span id="turn-indicator" class="fw-bold text-warning">Waiting...</span></p>
-        </div>
-        <div class="col-md-4 text-end">
-            <div class="card bg-dark text-white p-2">
-                <h5>Current Round (Dehlas)</h5>
-                <p class="m-0">Team A: <span id="scoreA">0</span></p>
-                <p class="m-0">Team B: <span id="scoreB">0</span></p>
-            </div>
-        </div>
+    <div class="table-center">
+        <div id="table-cards" class="position-absolute w-100 h-100 d-flex justify-content-center align-items-center"></div>
+        <div id="pile-counter" class="position-absolute text-warning fw-bold fs-6" style="bottom: -25px; left: 50%; transform: translateX(-50%); white-space: nowrap;">Pile: 0</div>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-12">
-            <h4>Table</h4>
-            <div id="table-cards" class="table-area d-flex flex-wrap align-items-center justify-content-center"></div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-12">
-            <h4>My Hand</h4>
-            <div id="my-hand" class="d-flex flex-wrap"></div>
-        </div>
+    <div class="my-hand-container">
+        <div id="my-turn-glow" class="position-absolute w-100 h-100" style="border-radius: 20px; top: 0; left: 0; pointer-events: none; transition: 0.3s;"></div>
+        <div id="my-hand" class="d-flex position-relative z-1"></div>
     </div>
 </div>
 
 <script>
-    const ws = new WebSocket("ws://localhost:7070/game");
+    // Automatically detect if we are on a local computer (file:///) or localhost, otherwise use the real web address
+      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '';
+      const hostAddress = isLocal ? 'localhost:7070' : window.location.host;
 
-    // --- LOCAL STORAGE MAGIC ---
-    let mySecretToken = localStorage.getItem("dehlaToken");
+      // Create the connection
+      const ws = new WebSocket("ws://" + hostAddress + "/game");
 
-    ws.onopen = () => {
-        document.getElementById("lobby-status").innerText = "Connected! Welcome.";
-        document.getElementById("lobby-status").className = "text-success";
-        document.getElementById("lobby-controls").style.display = "block";
+      let mySecretToken = localStorage.getItem("dehlaToken");
 
-        // If we remember a token from a previous session, try to reconnect instantly!
-        if (mySecretToken) {
-            document.getElementById("lobby-status").innerText = "Reconnecting to your game...";
-            document.getElementById("lobby-controls").style.display = "none";
-            ws.send(JSON.stringify({ action: "RECONNECT", playerToken: mySecretToken }));
-        }
-    };
+      ws.onopen = () => {
+          document.getElementById("lobby-status").innerText = "Connected! Welcome.";
+          document.getElementById("lobby-status").className = "text-success";
+          document.getElementById("lobby-controls").style.display = "block";
+          if (mySecretToken) {
+              document.getElementById("lobby-status").innerText = "Reconnecting...";
+              document.getElementById("lobby-controls").style.display = "none";
+              ws.send(JSON.stringify({ action: "RECONNECT", playerToken: mySecretToken }));
+          }
+      };
+      ws.onclose = () => { alert("Connection lost. Please refresh."); };
 
-    ws.onclose = () => {
-        alert("Connection to server lost. Please refresh the page.");
-    };
+      // --- CARD TRANSLATOR MAGIC ---
+      function formatCardInfo(cardStr) {
+          const parts = cardStr.split(" of ");
+          const rankMap = { 'ACE': 'A', 'KING': 'K', 'QUEEN': 'Q', 'JACK': 'J', 'TEN': '10', 'NINE': '9', 'EIGHT': '8', 'SEVEN': '7', 'SIX': '6', 'FIVE': '5', 'FOUR': '4', 'THREE': '3', 'TWO': '2' };
+          const displayRank = rankMap[parts[0]] || parts[0];
+          const suit = parts[1];
+          let symbol = '', colorClass = '';
+          if (suit === 'HEARTS') { symbol = '♥️'; colorClass = 'card-red'; }
+          else if (suit === 'DIAMONDS') { symbol = '♦️'; colorClass = 'card-red'; }
+          else if (suit === 'CLUBS') { symbol = '♣️'; colorClass = 'card-black'; }
+          else if (suit === 'SPADES') { symbol = '♠️'; colorClass = 'card-black'; }
+          return { displayRank, symbol, colorClass };
+      }
 
-    ws.onmessage = (event) => {
-        const state = JSON.parse(event.data);
+      function createCardHTML(cardStr, isClickable, isCenter = false) {
+          const card = formatCardInfo(cardStr);
+          const clickEvent = isClickable ? `onclick="playCard('${cardStr}')"` : "";
+          const disableClass = (!isClickable && !isCenter) ? "card-disabled" : "";
+          return `
+              <div class="playing-card ${card.colorClass} ${disableClass}" ${clickEvent}>
+                  <div class="card-top">${card.displayRank}<br><small>${card.symbol}</small></div>
+                  <div class="card-center">${card.symbol}</div>
+                  <div class="card-bottom">${card.displayRank}<br><small>${card.symbol}</small></div>
+              </div>`;
+      }
 
-        // 1. ERROR HANDLING
-        if (state.errorMessage) {
-            alert(state.errorMessage);
-            // If the server says our token is expired or invalid, wipe it so we can start fresh.
-            if (state.errorMessage.includes("expired") || state.errorMessage.includes("rejoin")) {
-                localStorage.removeItem("dehlaToken");
-                mySecretToken = null;
-                document.getElementById("lobby-controls").style.display = "block";
-                document.getElementById("lobby-status").innerText = "Session expired. Join a new room.";
-            }
-            return;
-        }
+      ws.onmessage = (event) => {
+          const state = JSON.parse(event.data);
+          if (state.errorMessage) {
+              alert(state.errorMessage);
+              if (state.errorMessage.includes("expired") || state.errorMessage.includes("rejoin")) {
+                  localStorage.removeItem("dehlaToken"); location.reload();
+              }
+              return;
+          }
 
-        // 2. SAVE OUR NEW TOKEN
-        if (state.myToken && state.myToken !== mySecretToken) {
-            mySecretToken = state.myToken;
-            localStorage.setItem("dehlaToken", mySecretToken);
-        }
+          if (state.myToken && state.myToken !== mySecretToken) {
+              mySecretToken = state.myToken; localStorage.setItem("dehlaToken", mySecretToken);
+          }
 
-        // 3. TRANSITION FROM LOBBY TO GAME SCREEN
-        document.getElementById("lobby-screen").style.display = "none";
-        document.getElementById("game-screen").style.display = "block";
-        document.getElementById("display-room-code").innerText = `Code: ${state.roomCode}`;
+          document.getElementById("lobby-screen").style.display = "none";
+          document.getElementById("game-screen").style.display = "block";
+          document.getElementById("menu-room-code").innerText = state.roomCode;
 
-        // --- THE REST IS YOUR EXISTING GAME UI LOGIC ---
-        document.getElementById("phase").innerText = state.currentPhase;
-        document.getElementById("trump").innerText = state.trumpSuit;
-        document.getElementById("scoreA").innerText = state.teamAScore;
-        document.getElementById("scoreB").innerText = state.teamBScore;
+          // HUD Updates
+          let tSuit = state.trumpSuit === "HEARTS" ? "♥️" : state.trumpSuit === "DIAMONDS" ? "♦️" : state.trumpSuit === "SPADES" ? "♠️" : state.trumpSuit === "CLUBS" ? "♣️" : "NONE";
+          document.getElementById("trump").innerText = tSuit;
+          document.getElementById("menu-scoreA").innerText = state.teamAScore;
+          document.getElementById("menu-scoreB").innerText = state.teamBScore;
+          document.getElementById("pile-counter").innerText = `Pile: ${state.accumulatedPileSize} cards`;
 
-       // Change this to use state.isMyTurn!
-        document.getElementById("turn-indicator").innerText = state.isMyTurn ? "🟩 YOUR TURN!" : `🟥 Waiting for ${state.currentTurnPlayerName}...`;
-        const tableDiv = document.getElementById("table-cards");
-        tableDiv.innerHTML = `<h5 class="w-100 text-center mb-3 text-warning">Pile Waiting to be Swept: ${state.accumulatedPileSize} cards</h5>`;
-        state.currentTrickCards.forEach(cardStr => {
-            tableDiv.innerHTML += `<div class="playing-card" style="cursor: default; border: 2px solid #3498db;">${cardStr}</div>`;
-        });
+          // ==========================================
+          // TRUE ANTI-CLOCKWISE SEATING LOGIC
+          // ==========================================
+          const myIndex = (state.seatingOrder && state.seatingOrder.length > 0) ? state.seatingOrder.indexOf(state.myName) : -1;
+          let rightPlayer = "Waiting...", topPlayer = "Waiting...", leftPlayer = "Waiting...";
 
-        const handDiv = document.getElementById("my-hand");
-        handDiv.innerHTML = "";
-        state.myHand.forEach(cardStr => {
-            // Change this from "if (isMyTurn)" to "if (state.isMyTurn)"
-            if (state.isMyTurn) {
-                handDiv.innerHTML += `<div class="playing-card" onclick="playCard('${cardStr}')">${cardStr}</div>`;
-            } else {
-                handDiv.innerHTML += `<div class="playing-card" style="background-color: #bdc3c7; cursor: not-allowed; opacity: 0.7;">${cardStr}</div>`;
-            }
-        });
+          if (myIndex !== -1 && state.seatingOrder.length > 0) {
+              // Anti-Clockwise mapping: Right is +1, Top is +2, Left is +3
+              rightPlayer = state.seatingOrder[(myIndex + 1) % state.seatingOrder.length] || "Waiting...";
+              topPlayer = state.seatingOrder[(myIndex + 2) % state.seatingOrder.length] || "Waiting...";
+              leftPlayer = state.seatingOrder[(myIndex + 3) % state.seatingOrder.length] || "Waiting...";
 
-        if (state.historyTeamA) {
-            const mainTbody = document.getElementById("main-scoreboard-body");
-            const victoryTbody = document.getElementById("victory-scoreboard-body");
-            mainTbody.innerHTML = ""; victoryTbody.innerHTML = "";
-            for (let i = 0; i < state.historyTeamA.length; i++) {
-                const rowHTML = `<tr><td>Round ${i + 1}</td><td class="text-success">+${state.historyTeamA[i]}</td><td class="text-success">+${state.historyTeamB[i]}</td></tr>`;
-                mainTbody.innerHTML += rowHTML; victoryTbody.innerHTML += rowHTML;
-            }
-            document.getElementById("history-total-A").innerText = state.matchScoreA || 0;
-            document.getElementById("history-total-B").innerText = state.matchScoreB || 0;
-        }
+              document.getElementById("bottom-pod-name").innerText = state.myName + " (You)";
+              document.getElementById("right-pod-name").innerText = rightPlayer;
+              document.getElementById("top-pod-name").innerText = topPlayer;
+              document.getElementById("left-pod-name").innerText = leftPlayer;
+          }
 
-        const victoryScreen = document.getElementById("victory-screen");
-        if (state.currentPhase === "ROUND_OVER" || state.currentPhase === "MATCH_OVER") {
-            let currentPtsA = 0, currentPtsB = 0;
-            if (state.historyTeamA && state.historyTeamA.length > 0) {
-                currentPtsA = state.historyTeamA[state.historyTeamA.length - 1];
-                currentPtsB = state.historyTeamB[state.historyTeamB.length - 1];
-            }
+          // Clear glows
+          document.getElementById("pod-me").classList.remove("active-turn");
+          document.getElementById("pod-right").classList.remove("active-turn");
+          document.getElementById("pod-top").classList.remove("active-turn");
+          document.getElementById("pod-left").classList.remove("active-turn");
+          document.getElementById("my-turn-glow").style.boxShadow = "none";
 
-            document.getElementById("modal-dehlasA").innerText = state.teamAScore;
-            document.getElementById("modal-dehlasB").innerText = state.teamBScore;
-            document.getElementById("modal-pointsA").innerText = currentPtsA;
-            document.getElementById("modal-pointsB").innerText = currentPtsB;
-            document.getElementById("modal-match-score").innerText = `Team A: ${state.matchScoreA || 0} | Team B: ${state.matchScoreB || 0}`;
+          // Apply glow
+          if (state.isMyTurn) {
+              document.getElementById("pod-me").classList.add("active-turn");
+              document.getElementById("my-turn-glow").style.boxShadow = "0 0 30px rgba(241, 196, 15, 0.5) inset";
+          } else if (state.currentTurnPlayerName === rightPlayer) { document.getElementById("pod-right").classList.add("active-turn");
+          } else if (state.currentTurnPlayerName === topPlayer) { document.getElementById("pod-top").classList.add("active-turn");
+          } else if (state.currentTurnPlayerName === leftPlayer) { document.getElementById("pod-left").classList.add("active-turn"); }
 
-            if (state.currentPhase === "MATCH_OVER") {
-                document.getElementById("victory-buttons").style.display = "none";
-                const grandMsg = document.getElementById("game-over-message");
-                grandMsg.style.display = "block";
-                if (state.matchScoreA > state.matchScoreB) grandMsg.innerHTML = "🏆 TEAM A WINS! 🏆<br><br><button class='btn btn-outline-light mt-2' onclick='leaveRoom()'>Leave Table</button>";
-                else if (state.matchScoreB > state.matchScoreA) grandMsg.innerHTML = "🏆 TEAM B WINS! 🏆<br><br><button class='btn btn-outline-light mt-2' onclick='leaveRoom()'>Leave Table</button>";
-                else grandMsg.innerHTML = "🤝 IT'S A TIE! 🤝<br><br><button class='btn btn-outline-light mt-2' onclick='leaveRoom()'>Leave Table</button>";
-                document.querySelector("#victory-screen h1").innerText = "Match Finished!";
-            } else {
-                document.getElementById("victory-buttons").style.display = "flex";
-                document.getElementById("game-over-message").style.display = "none";
-                document.querySelector("#victory-screen h1").innerText = "Round Over!";
-                let winnerText = "It's a Tie!";
-                if (state.teamAScore > state.teamBScore) winnerText = "Team A Wins the Round!";
-                if (state.teamBScore > state.teamAScore) winnerText = "Team B Wins the Round!";
-                if (state.teamAScore === 4) winnerText = "🏆 TEAM A ACHIEVED KOT! 🏆";
-                if (state.teamBScore === 4) winnerText = "🏆 TEAM B ACHIEVED KOT! 🏆";
-                document.getElementById("victory-title").innerText = winnerText;
-            }
-            victoryScreen.style.setProperty("display", "flex", "important");
-        } else {
-            victoryScreen.style.setProperty("display", "none", "important");
-        }
-    };
+          // ==========================================
+          // RENDER TABLE CARDS (Directionally Accurate Toss!)
+          // ==========================================
+          const tableDiv = document.getElementById("table-cards");
+          tableDiv.innerHTML = "";
 
-    // --- LOBBY ACTIONS ---
+          if (state.currentTrickCards && state.trickPlayerNames) {
+              state.currentTrickCards.forEach((cardStr, index) => {
+                  const cardHTML = createCardHTML(cardStr, false, true);
+                  const playedByName = state.trickPlayerNames[index];
 
-    function createRoom() {
-        const name = document.getElementById("player-name").value.trim();
+                  let animationDir = 'bottom'; // Me
+                  if (playedByName === rightPlayer) animationDir = 'right';
+                  if (playedByName === topPlayer) animationDir = 'top';
+                  if (playedByName === leftPlayer) animationDir = 'left';
 
-        // Validation: Stop and alert if the name is blank
-        if (!name) {
-            alert("Please enter your name to create a room!");
-            return;
-        }
+                  tableDiv.innerHTML += `<div class="position-absolute" style="animation: toss-${animationDir} 0.4s ease-out forwards; z-index: ${index};">${cardHTML}</div>`;
+              });
+          }
 
-        ws.send(JSON.stringify({ action: "CREATE_ROOM", playerName: name }));
-    }
+          // --- RENDER MY HAND ---
+          const handDiv = document.getElementById("my-hand");
+          handDiv.innerHTML = "";
+          state.myHand.forEach(cardStr => {
+              handDiv.innerHTML += createCardHTML(cardStr, state.isMyTurn, false);
+          });
 
-    function joinRoom() {
-        const name = document.getElementById("player-name").value.trim();
-        const code = document.getElementById("join-code").value.trim().toUpperCase();
+          // Scoreboard & Victory Logic
+          if (state.historyTeamA) {
+              const mainTbody = document.getElementById("main-scoreboard-body");
+              const victoryTbody = document.getElementById("victory-scoreboard-body");
+              mainTbody.innerHTML = ""; victoryTbody.innerHTML = "";
+              for (let i = 0; i < state.historyTeamA.length; i++) {
+                  const rowHTML = `<tr><td>${i + 1}</td><td class="text-success">+${state.historyTeamA[i]}</td><td class="text-success">+${state.historyTeamB[i]}</td></tr>`;
+                  mainTbody.innerHTML += rowHTML; victoryTbody.innerHTML += rowHTML;
+              }
+              document.getElementById("history-total-A").innerText = state.matchScoreA || 0;
+              document.getElementById("history-total-B").innerText = state.matchScoreB || 0;
+          }
 
-        // Validation: Stop and alert if either field is blank
-        if (!name) {
-            alert("Please enter your name to join!");
-            return;
-        }
-        if (!code) {
-            alert("Please enter a 4-digit Room Code!");
-            return;
-        }
+          const victoryScreen = document.getElementById("victory-screen");
+          if (state.currentPhase === "ROUND_OVER" || state.currentPhase === "MATCH_OVER") {
+              let currentPtsA = 0, currentPtsB = 0;
+              if (state.historyTeamA && state.historyTeamA.length > 0) { currentPtsA = state.historyTeamA[state.historyTeamA.length - 1]; currentPtsB = state.historyTeamB[state.historyTeamB.length - 1]; }
+              document.getElementById("modal-dehlasA").innerText = state.teamAScore; document.getElementById("modal-dehlasB").innerText = state.teamBScore;
+              document.getElementById("modal-pointsA").innerText = currentPtsA; document.getElementById("modal-pointsB").innerText = currentPtsB;
+              document.getElementById("modal-match-score").innerText = `${state.matchScoreA || 0} - ${state.matchScoreB || 0}`;
 
-        ws.send(JSON.stringify({ action: "JOIN_ROOM", playerName: name, roomCode: code }));
-    }
+              if (state.currentPhase === "MATCH_OVER") {
+                  document.getElementById("victory-buttons").style.display = "none"; document.getElementById("game-over-message").style.display = "block";
+                  const grandMsg = document.getElementById("game-over-message");
+                  if (state.matchScoreA > state.matchScoreB) grandMsg.innerHTML = "🏆 TEAM A WINS! 🏆<br><button class='btn btn-light mt-3' onclick='leaveRoom()'>Leave Table</button>";
+                  else if (state.matchScoreB > state.matchScoreA) grandMsg.innerHTML = "🏆 TEAM B WINS! 🏆<br><button class='btn btn-light mt-3' onclick='leaveRoom()'>Leave Table</button>";
+                  else grandMsg.innerHTML = "🤝 TIE MATCH! 🤝<br><button class='btn btn-light mt-3' onclick='leaveRoom()'>Leave Table</button>";
+                  document.querySelector("#victory-screen h2").innerText = "Match Finished!";
+              } else {
+                  document.getElementById("victory-buttons").style.display = "flex"; document.getElementById("game-over-message").style.display = "none";
+                  document.querySelector("#victory-screen h2").innerText = "Round Over!";
+                  let winnerText = "It's a Tie!";
+                  if (state.teamAScore > state.teamBScore) winnerText = "Team A Wins Round!";
+                  if (state.teamBScore > state.teamAScore) winnerText = "Team B Wins Round!";
+                  if (state.teamAScore === 4) winnerText = "🏆 TEAM A KOT! 🏆";
+                  if (state.teamBScore === 4) winnerText = "🏆 TEAM B KOT! 🏆";
+                  document.getElementById("victory-title").innerText = winnerText;
+              }
+              victoryScreen.style.setProperty("display", "flex", "important");
+          } else {
+              victoryScreen.style.setProperty("display", "none", "important");
+          }
+      };
 
-   function leaveRoom() {
-        // 1. Tell the server to delete our seat!
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ action: "LEAVE_ROOM" }));
-        }
-
-        // 2. Wipe the token so we don't auto-reconnect
-        localStorage.removeItem("dehlaToken");
-
-        // 3. Give the server 100 milliseconds to process the message, then refresh
-        setTimeout(() => {
-            location.reload();
-        }, 100);
-    }
-
-    // --- GAME ACTIONS ---
-    function toggleScoreboard() {
-        const screen = document.getElementById("scoreboard-screen");
-        screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none";
-    }
-
-    function finishGame() {
-        if(confirm("Are you sure you want to end the entire game and declare a winner?")) {
-            ws.send(JSON.stringify({ action: "FINISH_GAME" }));
-        }
-    }
-
-    function playAgain() { ws.send(JSON.stringify({ action: "PLAY_AGAIN" })); }
-    function playCard(cardString) {
-        const parts = cardString.split(" of ");
-        ws.send(JSON.stringify({ action: "PLAY_CARD", suit: parts[1], rank: parts[0] }));
-    }
+      // --- ACTIONS ---
+      function toggleGameMenu() { const menu = document.getElementById("game-menu-modal"); menu.style.display = (menu.style.display === "none" || menu.style.display === "") ? "flex" : "none"; }
+      function toggleScoreboard() { const screen = document.getElementById("scoreboard-screen"); document.getElementById("game-menu-modal").style.display = "none"; screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none"; }
+      function createRoom() { const name = document.getElementById("player-name").value.trim(); if (!name) { alert("Enter your name!"); return; } ws.send(JSON.stringify({ action: "CREATE_ROOM", playerName: name })); }
+      function joinRoom() { const name = document.getElementById("player-name").value.trim(); const code = document.getElementById("join-code").value.trim().toUpperCase(); if (!name || !code) { alert("Enter Name and Code!"); return; } ws.send(JSON.stringify({ action: "JOIN_ROOM", playerName: name, roomCode: code })); }
+      function leaveRoom() { if (ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ action: "LEAVE_ROOM" })); } localStorage.removeItem("dehlaToken"); setTimeout(() => { location.reload(); }, 100); }
+      function finishGame() { if(confirm("End game?")) ws.send(JSON.stringify({ action: "FINISH_GAME" })); }
+      function playAgain() { ws.send(JSON.stringify({ action: "PLAY_AGAIN" })); }
+      function playCard(cardString) { const parts = cardString.split(" of "); ws.send(JSON.stringify({ action: "PLAY_CARD", suit: parts[1], rank: parts[0] })); }
 </script>
-
 </body>
 </html>

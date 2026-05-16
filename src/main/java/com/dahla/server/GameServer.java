@@ -31,8 +31,11 @@ public class GameServer {
     public static void main(String[] args) {
         System.out.println("Starting Dehla Pakad Server on port 7070...");
 
-        // Replace the broken config block with this simple line:
-        Javalin app = Javalin.create().start(7070);
+        // The cloud provider will inject a "PORT" variable. If it's missing, we default to 7070 for local testing.
+        String portStr = System.getenv("PORT");
+        int port = (portStr != null) ? Integer.parseInt(portStr) : 7070;
+
+        Javalin app = Javalin.create().start(port);
 
         app.ws("/game", ws -> {
 
@@ -206,8 +209,18 @@ public class GameServer {
             // Only the player whose object matches the current turn player gets "true"
             update.isMyTurn = (room.getCurrentTurnPlayer() != null && room.getCurrentTurnPlayer().equals(player));
 
+            // Send the master seating order
+            update.seatingOrder = room.getPlayers().stream()
+                    .map(Player::getName)
+                    .collect(Collectors.toList());
+
             update.currentTrickCards = room.getCurrentTrick().getTableCards().values().stream()
                     .map(Card::toString)
+                    .collect(Collectors.toList());
+
+            // NEW: Send the exact names of the people who played those cards
+            update.trickPlayerNames = room.getCurrentTrick().getTableCards().keySet().stream()
+                    .map(Player::getName)
                     .collect(Collectors.toList());
             update.accumulatedPileSize = room.getTableAccumulator().size();
 
