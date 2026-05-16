@@ -198,14 +198,20 @@
 </div>
 
 <script>
-    // Automatically detect if we are on a local computer (file:///) or localhost, otherwise use the real web address
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '';
-      const hostAddress = isLocal ? 'localhost:7070' : window.location.host;
+    // Automatically detect if we are testing locally or playing on the internet
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '';
 
-      // Create the connection
-      const ws = new WebSocket("ws://" + hostAddress + "/game");
+    // ⚠️ PASTE YOUR RENDER DOMAIN HERE (No https://) ⚠️
+    const cloudUrl = 'dehla-pakad-web.onrender.com';
 
-      let mySecretToken = localStorage.getItem("dehlaToken");
+    const hostAddress = isLocal ? 'localhost:7070' : cloudUrl;
+
+    // The internet requires Secure WebSockets (wss://) instead of normal (ws://)
+    const protocol = isLocal ? "ws://" : "wss://";
+
+    const ws = new WebSocket(protocol + hostAddress + "/game");
+
+    let mySecretToken = localStorage.getItem("dehlaToken");
 
       ws.onopen = () => {
           document.getElementById("lobby-status").innerText = "Connected! Welcome.";
