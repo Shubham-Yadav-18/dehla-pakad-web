@@ -250,6 +250,38 @@
                   <div class="card-bottom">${card.displayRank}<br><small>${card.symbol}</small></div>
               </div>`;
       }
+      // --- SILENT HAND SORTING LOGIC ---
+      function sortHand(handArray) {
+          if (!handArray) return [];
+
+          // 1. Define the hierarchy of cards
+          const rankWeights = {
+              'ACE': 14, 'KING': 13, 'QUEEN': 12, 'JACK': 11, 'TEN': 10,
+              'NINE': 9, 'EIGHT': 8, 'SEVEN': 7, 'SIX': 6, 'FIVE': 5,
+              'FOUR': 4, 'THREE': 3, 'TWO': 2
+          };
+
+          // 2. Define suit order (Alternating colors: Black, Red, Black, Red)
+          const suitWeights = {
+              'SPADES': 4,   // Black
+              'HEARTS': 3,   // Red
+              'CLUBS': 2,    // Black
+              'DIAMONDS': 1  // Red
+          };
+
+          // 3. Sort the array
+          return handArray.sort((a, b) => {
+              const [rankA, suitA] = a.split(" of ");
+              const [rankB, suitB] = b.split(" of ");
+
+              // First, group by Suit
+              if (suitWeights[suitA] !== suitWeights[suitB]) {
+                  return suitWeights[suitB] - suitWeights[suitA];
+              }
+              // If suits are the same, order by Rank (Highest to Lowest)
+              return rankWeights[rankB] - rankWeights[rankA];
+          });
+      }
 
       ws.onmessage = (event) => {
           const state = JSON.parse(event.data);
@@ -294,20 +326,25 @@
               document.getElementById("left-pod-name").innerText = leftPlayer;
           }
 
-          // Clear glows
+         // Clear glows
           document.getElementById("pod-me").classList.remove("active-turn");
           document.getElementById("pod-right").classList.remove("active-turn");
           document.getElementById("pod-top").classList.remove("active-turn");
           document.getElementById("pod-left").classList.remove("active-turn");
           document.getElementById("my-turn-glow").style.boxShadow = "none";
 
-          // Apply glow
-          if (state.isMyTurn) {
-              document.getElementById("pod-me").classList.add("active-turn");
-              document.getElementById("my-turn-glow").style.boxShadow = "0 0 30px rgba(241, 196, 15, 0.5) inset";
-          } else if (state.currentTurnPlayerName === rightPlayer) { document.getElementById("pod-right").classList.add("active-turn");
-          } else if (state.currentTurnPlayerName === topPlayer) { document.getElementById("pod-top").classList.add("active-turn");
-          } else if (state.currentTurnPlayerName === leftPlayer) { document.getElementById("pod-left").classList.add("active-turn"); }
+          // Apply glow (Only if the game is NOT paused)
+          if (state.isPaused) {
+              document.getElementById("bottom-pod-name").innerText = state.myName + " (Wait...)";
+          } else {
+              if (state.isMyTurn) {
+                  document.getElementById("pod-me").classList.add("active-turn");
+                  document.getElementById("my-turn-glow").style.boxShadow = "0 0 30px rgba(241, 196, 15, 0.5) inset";
+                  document.getElementById("bottom-pod-name").innerText = state.myName + " (Your Turn!)";
+              } else if (state.currentTurnPlayerName === rightPlayer) { document.getElementById("pod-right").classList.add("active-turn");
+              } else if (state.currentTurnPlayerName === topPlayer) { document.getElementById("pod-top").classList.add("active-turn");
+              } else if (state.currentTurnPlayerName === leftPlayer) { document.getElementById("pod-left").classList.add("active-turn"); }
+          }
 
           // ==========================================
           // RENDER TABLE CARDS (Directionally Accurate Toss!)
@@ -329,11 +366,18 @@
               });
           }
 
-          // --- RENDER MY HAND ---
+       // --- RENDER MY HAND ---
           const handDiv = document.getElementById("my-hand");
           handDiv.innerHTML = "";
-          state.myHand.forEach(cardStr => {
-              handDiv.innerHTML += createCardHTML(cardStr, state.isMyTurn, false);
+
+          // Prevent clicking during the 2.5 second pause!
+          const canIPlay = state.isMyTurn && !state.isPaused;
+
+          // ⚠️ THIS IS THE NEW PART: Sort the hand before looping!
+          const sortedHand = sortHand(state.myHand);
+
+          sortedHand.forEach(cardStr => {
+              handDiv.innerHTML += createCardHTML(cardStr, canIPlay, false);
           });
 
           // Scoreboard & Victory Logic

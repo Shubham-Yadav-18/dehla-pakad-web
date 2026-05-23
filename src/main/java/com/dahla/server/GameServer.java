@@ -15,6 +15,9 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class GameServer {
 
@@ -27,6 +30,8 @@ public class GameServer {
     // 3. Tracks which Token belongs to which live WebSocket connection
     private static final Map<WsContext, String> connectionToToken = new ConcurrentHashMap<>();
     private static final ObjectMapper jsonMapper = new ObjectMapper();
+    // 4. A background timer that won't freeze your web server threads
+    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
 
     public static void main(String[] args) {
         System.out.println("Starting Dehla Pakad Server on port 7070...");
@@ -124,7 +129,15 @@ public class GameServer {
                                     .orElseThrow(() -> new IllegalArgumentException("Card not found!"));
 
                             room.playCard(player, cardToPlay);
-                            broadcastToRoom(room);
+                            broadcastToRoom(room); // Instantly broadcast so everyone sees the 4th card land
+
+                            // If that 4th card paused the room, start the 2.5 second stopwatch!
+                            if (room.isPaused) {
+                                scheduler.schedule(() -> {
+                                    room.finalizeTrick(); // Sweep the cards and unlock
+                                    broadcastToRoom(room); // Broadcast the clean table
+                                }, 2500, TimeUnit.MILLISECONDS);
+                            }
                         }
                         else if ("PLAY_AGAIN".equals(action.action)) {
                             room.playAnotherRound();
@@ -206,6 +219,7 @@ public class GameServer {
             update.trumpSuit = room.getTrumpSuit() != null ? room.getTrumpSuit().name() : "NOT YET DISCOVERED";
             update.myName = player.getName();
             update.currentTurnPlayerName = room.getCurrentTurnPlayer() != null ? room.getCurrentTurnPlayer().getName() : "Waiting...";
+            update.isPaused = room.isPaused;
             // Only the player whose object matches the current turn player gets "true"
             update.isMyTurn = (room.getCurrentTurnPlayer() != null && room.getCurrentTurnPlayer().equals(player));
 

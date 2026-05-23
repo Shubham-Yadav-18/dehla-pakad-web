@@ -11,7 +11,7 @@ public class GameRoom {
     private final String roomId;
     private final List<Player> players;
     private GamePhase currentPhase;
-
+    public boolean isPaused = false;
     private Suit trumpSuit;
     private Trick currentTrick;
     private Player lastTrickWinner;
@@ -82,6 +82,11 @@ public class GameRoom {
      */
     public void playCard(Player player, Card card) {
 
+        // 0. SECURITY: Reject clicks if the game is paused for the 2.5s delay
+        if (isPaused) {
+            return;
+        }
+
         // 1. Check Turn Order
         if (currentTurnPlayer != null && !currentTurnPlayer.equals(player)) {
             throw new IllegalStateException("It is not your turn!");
@@ -103,12 +108,21 @@ public class GameRoom {
 
         // 5. RESOLVE TRICK OR PASS TURN
         if (currentTrick.isComplete()) {
-            resolveCompletedTrick();
-            this.currentTurnPlayer = this.lastTrickWinner;
+            this.isPaused = true; // Lock the table! The Server will clean it up in 2.5s.
+            this.currentTurnPlayer = null; // Nobody's turn while we wait
         } else {
             int currentIndex = players.indexOf(player);
             this.currentTurnPlayer = players.get((currentIndex + 1) % 4);
         }
+    }
+
+    /**
+     * Called by the Server's timer 2.5 seconds after the 4th card is played.
+     */
+    public void finalizeTrick() {
+        resolveCompletedTrick(); // Your existing method that sweeps cards and scores
+        this.currentTurnPlayer = this.lastTrickWinner; // Give turn to the winner
+        this.isPaused = false; // Unlock the game
     }
     /**
      * Resolves the trick and checks for Edge Case 1.

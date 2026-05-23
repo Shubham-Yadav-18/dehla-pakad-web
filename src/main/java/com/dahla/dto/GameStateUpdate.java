@@ -27,6 +27,7 @@ public class GameStateUpdate {
     // Add these so the frontend knows who is sitting where!
     public List<String> seatingOrder;
     public List<String> trickPlayerNames;
+    public boolean isPaused;
 
     public GameStateUpdate() {}
 }
