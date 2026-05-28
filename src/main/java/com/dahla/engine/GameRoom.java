@@ -11,7 +11,10 @@ public class GameRoom {
     private final String roomId;
     private final List<Player> players;
     private GamePhase currentPhase;
-    public boolean isPaused = false;
+
+    public boolean isTrickPaused = false;   // For the 2.5s animation
+    public boolean isNetworkPaused = false; // For the 60s disconnect wait
+
     private Suit trumpSuit;
     private Trick currentTrick;
     private Player lastTrickWinner;
@@ -83,7 +86,7 @@ public class GameRoom {
     public void playCard(Player player, Card card) {
 
         // 0. SECURITY: Reject clicks if the game is paused for the 2.5s delay
-        if (isPaused) {
+        if (isTrickPaused || isNetworkPaused) {
             return;
         }
 
@@ -108,7 +111,7 @@ public class GameRoom {
 
         // 5. RESOLVE TRICK OR PASS TURN
         if (currentTrick.isComplete()) {
-            this.isPaused = true; // Lock the table! The Server will clean it up in 2.5s.
+            this.isTrickPaused = true; // Lock the table! The Server will clean it up in 2.5s.
             this.currentTurnPlayer = null; // Nobody's turn while we wait
         } else {
             int currentIndex = players.indexOf(player);
@@ -122,7 +125,7 @@ public class GameRoom {
     public void finalizeTrick() {
         resolveCompletedTrick(); // Your existing method that sweeps cards and scores
         this.currentTurnPlayer = this.lastTrickWinner; // Give turn to the winner
-        this.isPaused = false; // Unlock the game
+        this.isTrickPaused = false; // ONLY unlock the trick timer!
     }
     /**
      * Resolves the trick and checks for Edge Case 1.
