@@ -14,13 +14,14 @@ public class GameRoom {
 
     public boolean isTrickPaused = false;   // For the 2.5s animation
     public boolean isNetworkPaused = false; // For the 60s disconnect wait
-
+    public boolean isBowniTimerStarted = false;
     private Suit trumpSuit;
     private Trick currentTrick;
     private Player lastTrickWinner;
     private Player lastWinningPlayerForSweep; // Now we track the specific player!
     private int teamAFinalPoints;
     private int teamBFinalPoints;
+
 
     private int matchPointsTeamA = 0;
     private int matchPointsTeamB = 0;
@@ -105,7 +106,8 @@ public class GameRoom {
         if (currentPhase == GamePhase.DISCOVERING_TRUMP) {
             if (currentTrick.getLeadSuit() != card.getSuit()) {
                 this.trumpSuit = card.getSuit();
-                this.currentPhase = GamePhase.SECOND_DEAL;
+                //now Second Deal phase will be set in ResolveCompletedtrick after current tricks get completed
+             //   this.currentPhase = GamePhase.SECOND_DEAL;
             }
         }
 
@@ -139,7 +141,7 @@ public class GameRoom {
         tableAccumulator.addAll(currentTrick.getTableCards().values());
 
         // --- NEW STRICT PLAYER-BASED SWEEP LOGIC ---
-        if (lastWinningPlayerForSweep != null && lastWinningPlayerForSweep.equals(trickWinner)) {
+        if (lastWinningPlayerForSweep != null && lastWinningPlayerForSweep.equals(trickWinner) && (this.currentPhase == GamePhase.MAIN_PLAY)) {
             // The EXACT SAME player won two in a row! Sweep the table!
             sweepTableForTeam(trickWinner.getTeam()); // The cards still go to the team's total score
 
@@ -157,10 +159,26 @@ public class GameRoom {
         this.currentTrick = new Trick();
 
         // Check if players have run out of cards
-        boolean areHandsEmpty = players.get(0).getHand().isEmpty();
+        boolean forceEndgame = players.get(0).getHand().isEmpty();
+
+        // --- 🌟 NEW: SUDDEN DEATH BOWNI CHECK ---
+        if (teamWhoCalledKot != null) {
+            boolean callingTeamWon = (teamWhoCalledKot == Team.TEAM_A && teamADehlasCount == 4) ||
+                    (teamWhoCalledKot == Team.TEAM_B && teamBDehlasCount == 4);
+            boolean callingTeamLost = (teamWhoCalledKot == Team.TEAM_A && teamBDehlasCount > 0) ||
+                    (teamWhoCalledKot == Team.TEAM_B && teamADehlasCount > 0);
+
+            if (callingTeamWon || callingTeamLost) {
+                forceEndgame = true; // Instantly trigger the round-over logic below!
+            }
+        }
+// 🌟 THE BACKEND FIX: Safely transition the phase ONLY after the 4th card is swept
+        if (this.currentPhase == GamePhase.DISCOVERING_TRUMP && this.trumpSuit != null) {
+            this.currentPhase = GamePhase.SECOND_DEAL;
+        }
 
         // EDGE CASE 1: 5 tricks done, no trump found yet
-        if (currentPhase == GamePhase.DISCOVERING_TRUMP && areHandsEmpty) {
+        if (currentPhase == GamePhase.DISCOVERING_TRUMP && forceEndgame) {
             this.trumpSuit = finalLeadSuitOfThisTrick;
             this.currentPhase = GamePhase.SECOND_DEAL;
         }
@@ -170,7 +188,7 @@ public class GameRoom {
             dealRemainingCards();
         }
         // === BUG FIX: THE 13TH TRICK & FINAL SCORING ===
-        else if (currentPhase == GamePhase.MAIN_PLAY && areHandsEmpty) {
+        else if (currentPhase == GamePhase.MAIN_PLAY && forceEndgame) {
 
             // 1. The winner of the 13th trick takes whatever is left on the table!
             if (!tableAccumulator.isEmpty()) {
@@ -212,7 +230,7 @@ public class GameRoom {
                 remainingHand.add(roomDeck.dealOneCard());
             }
         }
-        this.currentPhase = GamePhase.MAIN_PLAY;
+        this.currentPhase = GamePhase.BOWNI_DECLARATION;
     }
 
     private void sweepTableForTeam(Team winningTeam) {
@@ -243,6 +261,7 @@ public class GameRoom {
 
         this.trumpSuit = null;
         this.teamWhoCalledKot = null;
+        this.isBowniTimerStarted = false;
         this.lastTrickWinner = null;
         this.lastWinningPlayerForSweep = null;
         this.tableAccumulator.clear();
@@ -277,4 +296,8 @@ public class GameRoom {
     public List<Integer> getHistoryTeamB() { return historyTeamB; }
 
     public List<Player> getPlayers() {return players;}
+
+    public void setTeamWhoCalledKot(Team team) { this.teamWhoCalledKot = team; }
+    public Team getTeamWhoCalledKot() { return teamWhoCalledKot; }
+    public void setCurrentPhase(GamePhase phase) { this.currentPhase = phase; }
 }

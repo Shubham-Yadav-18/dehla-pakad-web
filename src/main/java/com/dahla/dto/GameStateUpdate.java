@@ -28,6 +28,7 @@ public class GameStateUpdate {
     public List<String> seatingOrder;
     public List<String> trickPlayerNames;
     public boolean isPaused;
+    public String bowniTeam;
 
     public GameStateUpdate() {}
 }

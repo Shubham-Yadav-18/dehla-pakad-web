@@ -147,9 +147,29 @@ public class GameServer {
                             // 🌟 PREVIOUS FIX: The 2.5 second stopwatch
                             if (room.isTrickPaused) {
                                 scheduler.schedule(() -> {
-                                    room.finalizeTrick(); // Sweep the cards and unlock
-                                    broadcastToRoom(room); // Broadcast the clean table
+                                    room.finalizeTrick();
+                                    broadcastToRoom(room);
+
+                                    // 🌟 NEW: If we just entered Bowni Phase, start the 10s clock!
+                                    if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION && !room.isBowniTimerStarted) {
+                                        room.isBowniTimerStarted = true;
+                                        scheduler.schedule(() -> {
+                                            // If nobody clicked it after 10s, silently start the game
+                                            if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION) {
+                                                room.setCurrentPhase(GamePhase.MAIN_PLAY);
+                                                broadcastToRoom(room);
+                                            }
+                                        }, 10, TimeUnit.SECONDS);
+                                    }
                                 }, 2500, TimeUnit.MILLISECONDS);
+                            }
+                        }
+                        else if ("CALL_BOWNI".equals(action.action)) {
+                            // First-Come, First-Served Lock
+                            if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION) {
+                                room.setTeamWhoCalledKot(player.getTeam());
+                                room.setCurrentPhase(GamePhase.MAIN_PLAY);
+                                broadcastToRoom(room);
                             }
                         }
                         else if ("PLAY_AGAIN".equals(action.action)) {
@@ -257,6 +277,7 @@ public class GameServer {
             update.myName = player.getName();
             update.currentTurnPlayerName = room.getCurrentTurnPlayer() != null ? room.getCurrentTurnPlayer().getName() : "Waiting...";
             update.isPaused = (room.isTrickPaused || room.isNetworkPaused);
+            update.bowniTeam = room.getTeamWhoCalledKot() != null ? room.getTeamWhoCalledKot().name() : null;
             // Only the player whose object matches the current turn player gets "true"
             update.isMyTurn = (room.getCurrentTurnPlayer() != null && room.getCurrentTurnPlayer().equals(player));
 

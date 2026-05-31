@@ -5,6 +5,7 @@ public enum GamePhase {
     FIRST_DEAL,          // Dealing 5 cards
     DISCOVERING_TRUMP,   // Playing tricks until someone breaks suit
     SECOND_DEAL,         // Trump found, dealing remaining 8 cards
+    BOWNI_DECLARATION,
     MAIN_PLAY,           // Playing the rest of the tricks
     ROUND_OVER ,          // 13 tricks done, calculating score
     MATCH_OVER,           //All rounds of the game are over

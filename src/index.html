@@ -177,7 +177,11 @@
 </div>
 
 <div id="game-screen">
-
+    <div id="bowni-badge" class="hud-badge text-white" style="position: absolute; top: 50px; left: 10px; display: none;"></div>
+    <div id="bowni-container" class="position-absolute top-50 start-50 translate-middle text-center" style="display: none; z-index: 100;">
+        <button class="btn btn-danger btn-lg shadow-lg" style="animation: pulse-pod 1s infinite alternate;" onclick="callBowni()">🔥 CALL BOWNI</button>
+        <p class="text-white mt-2 fw-bold bg-dark p-1 rounded">10 Seconds to Declare...</p>
+    </div>
     <div id="trump-display" class="hud-badge text-white">Trump: <span id="trump" class="text-danger">NONE</span></div>
     <div id="menu-button" class="hud-badge text-white" onclick="toggleGameMenu()">⚙️ Menu</div>
 
@@ -371,7 +375,20 @@
           handDiv.innerHTML = "";
 
           // Prevent clicking during the 2.5 second pause!
-          const canIPlay = state.isMyTurn && !state.isPaused;
+         // Cards are ONLY clickable during MAIN_PLAY
+          // 🌟 BUG FIX: Allow clicking during both the Trump Discovery phase AND Main Play!
+          const canIPlay = state.isMyTurn && !state.isPaused && (state.currentPhase === "MAIN_PLAY" || state.currentPhase === "DISCOVERING_TRUMP" );
+          // 🌟 NEW: Add these UI Toggles right here!
+          document.getElementById("bowni-container").style.display = (state.currentPhase === "BOWNI_DECLARATION") ? "block" : "none";
+          const badge = document.getElementById("bowni-badge");
+          if (state.bowniTeam) {
+              badge.style.display = "block";
+              badge.innerText = `🔥 ${state.bowniTeam === 'TEAM_A' ? 'Team A' : 'Team B'} Called Bowni!`;
+              badge.style.border = `2px solid ${state.bowniTeam === 'TEAM_A' ? '#e74c3c' : '#3498db'}`;
+          } else {
+              badge.style.display = "none";
+          }
+          // 🌟 End of new UI Toggles
 
           // ⚠️ THIS IS THE NEW PART: Sort the hand before looping!
           const sortedHand = sortHand(state.myHand);
@@ -412,10 +429,24 @@
                   document.getElementById("victory-buttons").style.display = "flex"; document.getElementById("game-over-message").style.display = "none";
                   document.querySelector("#victory-screen h2").innerText = "Round Over!";
                   let winnerText = "It's a Tie!";
-                  if (state.teamAScore > state.teamBScore) winnerText = "Team A Wins Round!";
-                  if (state.teamBScore > state.teamAScore) winnerText = "Team B Wins Round!";
-                  if (state.teamAScore === 4) winnerText = "🏆 TEAM A KOT! 🏆";
-                  if (state.teamBScore === 4) winnerText = "🏆 TEAM B KOT! 🏆";
+
+                  if (state.bowniTeam) {
+                      // --- 🔥 HIGH STAKES BOWNI OUTCOMES ---
+                      if (state.bowniTeam === 'TEAM_A') {
+                          if (state.teamAScore === 4) winnerText = "🔥 TEAM A BOWNI SUCCESSFUL! 🔥";
+                          else winnerText = "💥 BOWNI FAILED! TEAM B WINS! 💥";
+                      } else if (state.bowniTeam === 'TEAM_B') {
+                          if (state.teamBScore === 4) winnerText = "🔥 TEAM B BOWNI SUCCESSFUL! 🔥";
+                          else winnerText = "💥 BOWNI FAILED! TEAM A WINS! 💥";
+                      }
+                  } else {
+                      // --- 🟢 NORMAL GAME OUTCOMES ---
+                      if (state.teamAScore > state.teamBScore) winnerText = "Team A Wins Round!";
+                      if (state.teamBScore > state.teamAScore) winnerText = "Team B Wins Round!";
+                      if (state.teamAScore === 4) winnerText = "🏆 TEAM A NATURAL KOT! 🏆";
+                      if (state.teamBScore === 4) winnerText = "🏆 TEAM B NATURAL KOT! 🏆";
+                  }
+
                   document.getElementById("victory-title").innerText = winnerText;
               }
               victoryScreen.style.setProperty("display", "flex", "important");
@@ -433,6 +464,7 @@
       function finishGame() { if(confirm("End game?")) ws.send(JSON.stringify({ action: "FINISH_GAME" })); }
       function playAgain() { ws.send(JSON.stringify({ action: "PLAY_AGAIN" })); }
       function playCard(cardString) { const parts = cardString.split(" of "); ws.send(JSON.stringify({ action: "PLAY_CARD", suit: parts[1], rank: parts[0] })); }
+      function callBowni() { ws.send(JSON.stringify({ action: "CALL_BOWNI" })); }
 </script>
 </body>
 </html>
