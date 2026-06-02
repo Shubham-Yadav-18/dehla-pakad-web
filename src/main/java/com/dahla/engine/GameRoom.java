@@ -103,7 +103,7 @@ public class GameRoom {
         currentTrick.addCard(player, card);
 
         // 4. TRUMP DISCOVERY LOGIC
-        if (currentPhase == GamePhase.DISCOVERING_TRUMP) {
+        if (currentPhase == GamePhase.DISCOVERING_TRUMP && this.trumpSuit == null) {
             if (currentTrick.getLeadSuit() != card.getSuit()) {
                 this.trumpSuit = card.getSuit();
                 //now Second Deal phase will be set in ResolveCompletedtrick after current tricks get completed
