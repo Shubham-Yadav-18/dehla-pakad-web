@@ -96,28 +96,34 @@ public class GameRoom {
             throw new IllegalStateException("It is not your turn!");
         }
 
+        System.out.println("[ROOM " + this.roomId + "] " + player.getName() + " is validating play: " + card.toString());
+
         // 2. DELEGATE TO OUR SEPARATE RULE ENGINE
         MoveValidator.validateFollowSuitAndTrump(player, card, currentTrick, trumpSuit, currentPhase);
 
         // 3. Add card to trick (It is now 100% verified as legal)
         currentTrick.addCard(player, card);
+        System.out.println("[ROOM " + this.roomId + "] " + player.getName() + " successfully played " + card.toString() + ". Cards on table: " + currentTrick.getTableCards().size());
 
         // 4. TRUMP DISCOVERY LOGIC
         if (currentPhase == GamePhase.DISCOVERING_TRUMP && this.trumpSuit == null) {
             if (currentTrick.getLeadSuit() != card.getSuit()) {
                 this.trumpSuit = card.getSuit();
+                System.out.println("[ROOM " + this.roomId + "] 🚨 TRUMP DISCOVERED: " + this.trumpSuit);
                 //now Second Deal phase will be set in ResolveCompletedtrick after current tricks get completed
-             //   this.currentPhase = GamePhase.SECOND_DEAL;
+                //   this.currentPhase = GamePhase.SECOND_DEAL;
             }
         }
 
         // 5. RESOLVE TRICK OR PASS TURN
         if (currentTrick.isComplete()) {
+            System.out.println("[ROOM " + this.roomId + "] Trick is complete! Locking table for animation.");
             this.isTrickPaused = true; // Lock the table! The Server will clean it up in 2.5s.
             this.currentTurnPlayer = null; // Nobody's turn while we wait
         } else {
             int currentIndex = players.indexOf(player);
             this.currentTurnPlayer = players.get((currentIndex + 1) % 4);
+            System.out.println("[ROOM " + this.roomId + "] Turn passed to: " + this.currentTurnPlayer.getName());
         }
     }
 
@@ -136,9 +142,11 @@ public class GameRoom {
         if (!currentTrick.isComplete()) return;
 
         Player trickWinner = TrickEvaluator.determineWinner(currentTrick, trumpSuit);
+        System.out.println("[ROOM " + this.roomId + "] Trick resolved. Winner is: " + trickWinner.getName()); // 🌟 NEW PRINT
 
         // Add the 4 played cards to the table pile
         tableAccumulator.addAll(currentTrick.getTableCards().values());
+        System.out.println("[ROOM " + this.roomId + "] Cards added to pending pile. Pile size: " + tableAccumulator.size()); // 🌟 NEW PRINT
 
         // --- NEW STRICT PLAYER-BASED SWEEP LOGIC ---
         if (lastWinningPlayerForSweep != null && lastWinningPlayerForSweep.equals(trickWinner) && (this.currentPhase == GamePhase.MAIN_PLAY)) {
@@ -174,6 +182,7 @@ public class GameRoom {
         }
 // 🌟 THE BACKEND FIX: Safely transition the phase ONLY after the 4th card is swept
         if (this.currentPhase == GamePhase.DISCOVERING_TRUMP && this.trumpSuit != null) {
+            System.out.println("[ROOM " + this.roomId + "] Phase Shift: DISCOVERING_TRUMP -> SECOND_DEAL"); // 🌟 NEW PRINT
             this.currentPhase = GamePhase.SECOND_DEAL;
         }
 
@@ -185,7 +194,9 @@ public class GameRoom {
 
         // Transition Phases
         if (currentPhase == GamePhase.SECOND_DEAL) {
+            System.out.println("[ROOM " + this.roomId + "] Dealing remaining 8 cards to all players."); // 🌟 NEW PRINT
             dealRemainingCards();
+            System.out.println("[ROOM " + this.roomId + "] Phase Shift: SECOND_DEAL -> BOWNI_DECLARATION"); // 🌟 NEW PRINT
         }
         // === BUG FIX: THE 13TH TRICK & FINAL SCORING ===
         else if (currentPhase == GamePhase.MAIN_PLAY && forceEndgame) {

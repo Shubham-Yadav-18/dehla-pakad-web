@@ -34,7 +34,8 @@ public class GameServer {
     private static final ObjectMapper jsonMapper = new ObjectMapper();
 
     // 4. A background timer that won't freeze your web server threads
-    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    // 🌟 FIX 1: Increased thread pool from 1 to 4 to handle multiple simultaneous timers safely
+    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
 
     // 5. Tracks the 60-second reconnect countdowns for disconnected players
     private static final Map<String, ScheduledFuture<?>> reconnectTimers = new ConcurrentHashMap<>();
@@ -146,20 +147,40 @@ public class GameServer {
 
                             // 🌟 PREVIOUS FIX: The 2.5 second stopwatch
                             if (room.isTrickPaused) {
-                                scheduler.schedule(() -> {
-                                    room.finalizeTrick();
-                                    broadcastToRoom(room);
+                                System.out.println("[TIMER] Trick finished. Starting 2.5s animation timer for Room: " + room.getRoomId());
 
-                                    // 🌟 NEW: If we just entered Bowni Phase, start the 10s clock!
-                                    if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION && !room.isBowniTimerStarted) {
-                                        room.isBowniTimerStarted = true;
-                                        scheduler.schedule(() -> {
-                                            // If nobody clicked it after 10s, silently start the game
-                                            if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION) {
-                                                room.setCurrentPhase(GamePhase.MAIN_PLAY);
-                                                broadcastToRoom(room);
-                                            }
-                                        }, 10, TimeUnit.SECONDS);
+                                scheduler.schedule(() -> {
+                                    // 🛡️ FIX 2: THE SAFETY NET
+                                    try {
+                                        System.out.println("[TIMER] 2.5s passed. Resolving trick for Room: " + room.getRoomId());
+                                        room.finalizeTrick();
+                                        broadcastToRoom(room);
+
+                                        // 🌟 NEW: If we just entered Bowni Phase, start the 10s clock!
+                                        if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION && !room.isBowniTimerStarted) {
+                                            System.out.println("[TIMER] Bowni Phase hit! Starting 10s countdown for Room: " + room.getRoomId());
+                                            room.isBowniTimerStarted = true;
+
+                                            scheduler.schedule(() -> {
+                                                try {
+                                                    // If nobody clicked it after 10s, silently start the game
+                                                    if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION) {
+                                                        System.out.println("[TIMER] 10s passed. Nobody called Bowni. Auto-starting Main Play.");
+                                                        room.setCurrentPhase(GamePhase.MAIN_PLAY);
+                                                        broadcastToRoom(room);
+                                                    }
+                                                } catch (Exception e) {
+                                                    System.err.println("[CRITICAL ERROR] Bowni Timer Crashed: " + e.getMessage());
+                                                    e.printStackTrace();
+                                                }
+                                            }, 10, TimeUnit.SECONDS);
+                                        }
+                                    } catch (Exception e) {
+                                        System.err.println("[CRITICAL ERROR] Trick Resolution Timer Crashed! " + e.getMessage());
+                                        e.printStackTrace();
+                                        // Emergency unfreeze so players can keep playing
+                                        room.isTrickPaused = false;
+                                        broadcastToRoom(room);
                                     }
                                 }, 2500, TimeUnit.MILLISECONDS);
                             }
@@ -234,12 +255,19 @@ public class GameServer {
                             // SCENARIO 3: Mid-Game Disconnect! Pause and wait 60s.
                             else {
                                 room.isNetworkPaused = true;
-                                System.out.println(player.getName() + " disconnected! Starting 60s timer...");
+                                System.out.println("[ROOM " + room.getRoomId() + "] " + player.getName() + " disconnected! Freezing table. Starting 60s timer...");
                                 broadcastToRoom(room); // UI will freeze because isPaused is true
 
                                 // Start the 60-second Doomsday clock
+                                // 🌟 FIX 3: Armor-Plated Doomsday clock
                                 ScheduledFuture<?> timer = scheduler.schedule(() -> {
-                                    dissolveRoom(room, player.getName() + " lost connection. The room has been dissolved. Please rejoin.");
+                                    try {
+                                        System.out.println("[TIMER] 60s expired. Dissolving room " + room.getRoomId());
+                                        dissolveRoom(room, player.getName() + " lost connection. The room has been dissolved. Please rejoin.");
+                                    } catch (Exception e) {
+                                        System.err.println("[CRITICAL ERROR] Doomsday Timer Crashed: " + e.getMessage());
+                                        e.printStackTrace();
+                                    }
                                 }, 60, TimeUnit.SECONDS);
 
                                 // Save the timer so we can cancel it if they come back!
