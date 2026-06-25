@@ -143,20 +143,27 @@ public class GameRoom {
 
         Player trickWinner = TrickEvaluator.determineWinner(currentTrick, trumpSuit);
         System.out.println("[ROOM " + this.roomId + "] Trick resolved. Winner is: " + trickWinner.getName()); // 🌟 NEW PRINT
+        // 🔥 HOTFIX for Even Dehla
+        int accumulatorDehlas = countDehlas(this.tableAccumulator);
+        int currentTrickDehlas = countDehlas(this.currentTrick.getTableCards().values());
+
+        // Industry Standard: Use primitive 'boolean' (lowercase) and assign the equation directly
+        boolean isEvenDehla = (accumulatorDehlas == 2 || accumulatorDehlas == 4) && (currentTrickDehlas == 0);
 
         // Add the 4 played cards to the table pile
         tableAccumulator.addAll(currentTrick.getTableCards().values());
-        System.out.println("[ROOM " + this.roomId + "] Cards added to pending pile. Pile size: " + tableAccumulator.size()); // 🌟 NEW PRINT
+        System.out.println("[ROOM " + this.roomId + "] Cards added to pending pile. Pile size: " + tableAccumulator.size());
 
         // --- NEW STRICT PLAYER-BASED SWEEP LOGIC ---
-        if (lastWinningPlayerForSweep != null && lastWinningPlayerForSweep.equals(trickWinner) && (this.currentPhase == GamePhase.MAIN_PLAY)) {
-            // The EXACT SAME player won two in a row! Sweep the table!
-            sweepTableForTeam(trickWinner.getTeam()); // The cards still go to the team's total score
+        // Industry Standard: No need to write '== true', just pass the boolean!
+        if (lastWinningPlayerForSweep != null && lastWinningPlayerForSweep.equals(trickWinner) && this.currentPhase == GamePhase.MAIN_PLAY && isEvenDehla) {
 
-            // RESET THE STREAK: They must win two NEW tricks to sweep again.
-            lastWinningPlayerForSweep = null;
+            // The EXACT SAME player won two in a row! Sweep the table!
+            sweepTableForTeam(trickWinner.getTeam());
+            lastWinningPlayerForSweep = null; // Reset the streak
+
         } else {
-            // No sweep yet. Remember this specific player for the next trick.
+            // No sweep yet (or sweep was blocked!). Remember this specific player for the next trick.
             lastWinningPlayerForSweep = trickWinner;
         }
 
@@ -286,6 +293,12 @@ public class GameRoom {
     }
     public void removePlayer(Player player) {
         this.players.remove(player);
+    }
+    // 🔥 HOTFIX: Helper to count Dehlas for tonight's game
+    private int countDehlas(java.util.Collection<Card> cards) {
+        return (int) cards.stream()
+                .filter(c -> "TEN".equals(c.getRank().name()))
+                .count();
     }
 
     // Getters
