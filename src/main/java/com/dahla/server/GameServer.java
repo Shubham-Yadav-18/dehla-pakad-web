@@ -2,6 +2,7 @@ package com.dahla.server;
 
 import com.dahla.dto.GameStateUpdate;
 import com.dahla.dto.PlayerAction;
+import com.dahla.dto.RoomSettings;
 import com.dahla.engine.GamePhase;
 import com.dahla.engine.GameRoom;
 import com.dahla.model.Card;
@@ -67,7 +68,11 @@ public class GameServer {
                     // ==========================================
                     if ("CREATE_ROOM".equals(action.action)) {
                         String newCode = generateRoomCode();
-                        GameRoom newRoom = new GameRoom(newCode);
+
+                        // 🌟 ARCHITECTURE UPDATE: Safely parse settings or use defaults
+                        RoomSettings roomRules = action.settings != null ? action.settings : new RoomSettings();
+                        GameRoom newRoom = new GameRoom(newCode, roomRules);
+
                         activeRooms.put(newCode, newRoom);
 
                         String token = generateToken();
@@ -75,7 +80,7 @@ public class GameServer {
 
                         globalPlayers.put(token, host);
                         connectionToToken.put(ctx, token);
-                        tokenToConnection.put(token, ctx); // 🌟 Track the real connection
+                        tokenToConnection.put(token, ctx);
                         newRoom.addPlayer(host);
 
                         broadcastToRoom(newRoom);

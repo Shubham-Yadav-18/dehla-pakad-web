@@ -1,5 +1,6 @@
 package com.dahla.engine;
 
+import com.dahla.dto.RoomSettings;
 import com.dahla.model.*;
 
 import java.util.ArrayList;
@@ -39,9 +40,13 @@ public class GameRoom {
     // Added a deck to manage the cards for this specific room
     private Deck roomDeck;
     private Player currentTurnPlayer;
+    // 🌟 NEW: The immutable rulebook for this specific room
+    private final RoomSettings rules;
 
-    public GameRoom(String roomId) {
+    public GameRoom(String roomId, RoomSettings rules) {
         this.roomId = roomId;
+        // NULL SAFETY: If rules are missing, enforce safe defaults instantly
+        this.rules = (rules != null) ? rules : new RoomSettings();
         this.players = new ArrayList<>();
         this.currentPhase = GamePhase.WAITING_FOR_PLAYERS;
         this.tableAccumulator = new ArrayList<>();
@@ -143,38 +148,49 @@ public class GameRoom {
 
         Player trickWinner = TrickEvaluator.determineWinner(currentTrick, trumpSuit);
         System.out.println("[ROOM " + this.roomId + "] Trick resolved. Winner is: " + trickWinner.getName()); // 🌟 NEW PRINT
-        // 🔥 HOTFIX for Even Dehla
-        int accumulatorDehlas = countDehlas(this.tableAccumulator);
-        int currentTrickDehlas = countDehlas(this.currentTrick.getTableCards().values());
+        // 1. Calculate strict Dehla conditions BEFORE adding cards to the accumulator
+        boolean isStrictSweepValid = false;
+        if (this.rules.strictSweepEnabled) {
+            int accumulatorDehlas = countDehlas(this.tableAccumulator);
+            int currentTrickDehlas = countDehlas(this.currentTrick.getTableCards().values());
+            isStrictSweepValid = (accumulatorDehlas == 2 || accumulatorDehlas == 4) && (currentTrickDehlas == 0);
+        }
 
-        // Industry Standard: Use primitive 'boolean' (lowercase) and assign the equation directly
-        boolean isEvenDehla = (accumulatorDehlas == 2 || accumulatorDehlas == 4) && (currentTrickDehlas == 0);
-
-        // Add the 4 played cards to the table pile
+        // 2. Add the 4 played cards to the table pile
         tableAccumulator.addAll(currentTrick.getTableCards().values());
         System.out.println("[ROOM " + this.roomId + "] Cards added to pending pile. Pile size: " + tableAccumulator.size());
 
-        // --- NEW STRICT PLAYER-BASED SWEEP LOGIC ---
-        // Industry Standard: No need to write '== true', just pass the boolean!
-        if (lastWinningPlayerForSweep != null && lastWinningPlayerForSweep.equals(trickWinner) && this.currentPhase == GamePhase.MAIN_PLAY && isEvenDehla) {
+        // 3. Check if the same player won two tricks in a row
+        boolean hasConsecutiveWins = (lastWinningPlayerForSweep != null && lastWinningPlayerForSweep.equals(trickWinner) && this.currentPhase == GamePhase.MAIN_PLAY);
 
-            // The EXACT SAME player won two in a row! Sweep the table!
-            sweepTableForTeam(trickWinner.getTeam());
-            lastWinningPlayerForSweep = null; // Reset the streak
-
+        // 4. Dynamic Rule Engine Evaluation
+        if (hasConsecutiveWins) {
+            // APPROVED: If casual mode is on, OR strict mode is on and conditions are met
+            if (!this.rules.strictSweepEnabled || isStrictSweepValid) {
+                sweepTableForTeam(trickWinner.getTeam());
+                lastWinningPlayerForSweep = null; // Reset the streak
+            } else {
+                // DENIED: Strict sweep blocked by Dehla count
+                lastWinningPlayerForSweep = trickWinner;
+            }
         } else {
-            // No sweep yet (or sweep was blocked!). Remember this specific player for the next trick.
+            // NORMAL WIN: No consecutive sweep yet. Remember player for the next trick.
             lastWinningPlayerForSweep = trickWinner;
         }
 
         // Keep this so Main.java knows who leads the next trick!
         this.lastTrickWinner = trickWinner;
-
         Suit finalLeadSuitOfThisTrick = currentTrick.getLeadSuit();
         this.currentTrick = new Trick();
 
         // Check if players have run out of cards
         boolean forceEndgame = players.get(0).getHand().isEmpty();
+
+        // --- 🌟 NEW FEATURE: EARLY ROUND END (ALL 4 DEHLAS CAUGHT) ---
+        if ((this.teamADehlasCount + this.teamBDehlasCount) == 4) {
+            forceEndgame = true;
+            System.out.println("[ROOM " + this.roomId + "] All 4 Dehlas caught! Ending round early.");
+        }
 
         // --- 🌟 NEW: SUDDEN DEATH BOWNI CHECK ---
         if (teamWhoCalledKot != null) {

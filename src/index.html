@@ -123,6 +123,12 @@
             <p id="lobby-status" class="text-warning mb-4">Connecting to server...</p>
             <div id="lobby-controls" style="display: none;">
                 <input type="text" id="player-name" class="form-control mb-3 text-center fs-5" placeholder="Enter Your Name">
+                <div class="rule-toggle-container" style="margin: 15px 0; text-align: left;">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="evenDehlaToggle" style="width: 18px; height: 18px;">
+                        <span style="font-weight: bold;">Even Dehla Rule</span>
+                    </label>
+                </div>
                 <button class="btn btn-success btn-lg w-100 mb-3" onclick="createRoom()">Create New Room</button>
                 <div class="d-flex align-items-center mb-3"><hr class="flex-grow-1 border-secondary"><span class="mx-3 text-secondary">OR</span><hr class="flex-grow-1 border-secondary"></div>
                 <input type="text" id="join-code" class="form-control mb-2 text-center fs-5 text-uppercase" placeholder="4-Digit Code" maxlength="4">
@@ -456,9 +462,29 @@
       };
 
       // --- ACTIONS ---
+      function createRoom() {
+    const name = document.getElementById("player-name").value.trim();
+
+    if (!name) {
+        alert("Enter your name!");
+        return;
+    }
+
+    // 🌟 NEW: Check if the user turned on the Even Dehla rule
+    // (Make sure the checkbox in your HTML has the id="evenDehlaToggle")
+    const isEvenDehla = document.getElementById("evenDehlaToggle").checked;
+
+    ws.send(JSON.stringify({
+        action: "CREATE_ROOM",
+        playerName: name,
+        // 🌟 NEW: Pass the settings object exactly how Jackson expects it
+        settings: {
+            strictSweepEnabled: isEvenDehla
+        }
+    }));
+}
       function toggleGameMenu() { const menu = document.getElementById("game-menu-modal"); menu.style.display = (menu.style.display === "none" || menu.style.display === "") ? "flex" : "none"; }
       function toggleScoreboard() { const screen = document.getElementById("scoreboard-screen"); document.getElementById("game-menu-modal").style.display = "none"; screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none"; }
-      function createRoom() { const name = document.getElementById("player-name").value.trim(); if (!name) { alert("Enter your name!"); return; } ws.send(JSON.stringify({ action: "CREATE_ROOM", playerName: name })); }
       function joinRoom() { const name = document.getElementById("player-name").value.trim(); const code = document.getElementById("join-code").value.trim().toUpperCase(); if (!name || !code) { alert("Enter Name and Code!"); return; } ws.send(JSON.stringify({ action: "JOIN_ROOM", playerName: name, roomCode: code })); }
       function leaveRoom() { if (ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ action: "LEAVE_ROOM" })); } localStorage.removeItem("dehlaToken"); setTimeout(() => { location.reload(); }, 100); }
       function finishGame() { if(confirm("End game?")) ws.send(JSON.stringify({ action: "FINISH_GAME" })); }
