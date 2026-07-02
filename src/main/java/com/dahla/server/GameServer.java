@@ -162,8 +162,9 @@ public class GameServer {
 
                             room.playCard(player, cardToPlay);
                             broadcastToRoom(room); // Instantly broadcast so everyone sees the 4th card land
-
-                            if (room.isTrickPaused) {
+                            // 🛡️ THE LOCK: Only spawn the timer if we aren't already resolving!
+                            if (room.isTrickPaused && !room.isTrickResolving) {
+                                room.isTrickResolving = true;
                                 System.out.println("[TIMER] Trick finished. Starting 2.5s animation timer for Room: " + room.getRoomId());
 
                                 // 🌟 NEW FIX 3: Self-Polling Runnable to prevent Timer Collisions
@@ -180,6 +181,7 @@ public class GameServer {
 
                                             System.out.println("[TIMER] 2.5s passed. Resolving trick for Room: " + room.getRoomId());
                                             room.finalizeTrick();
+                                            room.isTrickResolving = false;// Unlock the door
                                             broadcastToRoom(room);
 
                                             // If we just entered Bowni Phase, start the 10s clock!
@@ -217,6 +219,7 @@ public class GameServer {
                                             e.printStackTrace();
                                             // Emergency unfreeze so players can keep playing
                                             room.isTrickPaused = false;
+                                            room.isTrickResolving = false; // Emergency unlock
                                             broadcastToRoom(room);
                                         }
                                     }

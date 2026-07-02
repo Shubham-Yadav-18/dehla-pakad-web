@@ -16,6 +16,7 @@ public class GameRoom {
     public boolean isTrickPaused = false;   // For the 2.5s animation
     public boolean isNetworkPaused = false; // For the 60s disconnect wait
     public boolean isBowniTimerStarted = false;
+    public boolean isTrickResolving = false; // 🌟 NEW: The Thread Lock
     private Suit trumpSuit;
     private Trick currentTrick;
     private Player lastTrickWinner;
