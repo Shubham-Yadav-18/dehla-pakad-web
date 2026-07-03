@@ -46,6 +46,7 @@
                         color: var(--text-main);
                         margin: 0;
                         height: 100vh;
+                        height: 100dvh;
                         width: 100vw;
                         overflow: hidden;
                         font-family: 'Poppins', sans-serif;
@@ -258,7 +259,7 @@
                     position: relative;
                     cursor: pointer;
                     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                    margin-left: -5.5vw;
+                    margin-left: max(-5.5vw, -35px); /* 🌟 ADDED max() function */
                     font-weight: 700;
                     color: black;
                 }
@@ -299,7 +300,7 @@
 
                     /* 3. Tighter Card Spread for 13 cards in narrow width */
                     .playing-card {
-                        margin-left: -8vw;
+                        margin-left: max(-8vw, -35px); /* 🌟 ADDED max() function */
                     }
                 }
 
@@ -309,7 +310,9 @@
                 @media screen and (orientation: landscape) and (max-height: 600px) {
                     #lobby-screen {
                         height: 100vh !important;
+                        height: 100dvh !important;
                         max-height: 100vh !important;
+                        max-height: 100dvh !important;
                         overflow-y: auto !important;
                         justify-content: flex-start !important;
                         padding: 20px 15px 60px 15px !important;
@@ -356,7 +359,7 @@
                     .playing-card {
                         width: 9vw; max-width: 65px;
                         height: 14vw; max-height: 95px;
-                        margin-left: -3.5vw;
+                        margin-left: max(-3.5vw, -30px);
                     }
                     .card-center { font-size: 1.8rem; }
                     /* --- VICTORY SCREEN LANDSCAPE FIXES --- */
@@ -713,7 +716,7 @@
           const badge = document.getElementById("bowni-badge");
           if (state.bowniTeam) {
               badge.style.display = "block";
-              badge.innerText = `🔥 ${state.bowniTeam === 'TEAM_A' ? 'Team A' : 'Team B'} Called Bowni!`;
+              badge.innerText = `🔥 ${state.bowniTeam === 'TEAM_A' ? 'Team A' : 'Team B'} : Bowni!`;
               badge.style.border = `2px solid ${state.bowniTeam === 'TEAM_A' ? '#e74c3c' : '#3498db'}`;
           } else {
               badge.style.display = "none";
