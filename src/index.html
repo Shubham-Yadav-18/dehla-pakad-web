@@ -51,6 +51,9 @@
                         overflow: hidden;
                         font-family: 'Poppins', sans-serif;
                         touch-action: manipulation;
+                        /* 🌟 FIX: Disables accidental text highlighting */
+            user-select: none;
+            -webkit-user-select: none;
                     }
                     /* --- PHASE 1: LOBBY UI UPGRADES --- */
                     .glass-panel {
@@ -154,6 +157,43 @@
         .glass-table tbody td {
             padding: 8px 10px;
             border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+
+        /* --- ROUND LIMIT STEPPER CSS --- */
+        .stepper-container {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .btn-stepper {
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            line-height: 1;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .btn-stepper:active { transform: scale(0.9); }
+        .btn-stepper.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
         }
 
                     #game-screen { display: none; height: 100%; position: relative; }
@@ -405,6 +445,27 @@
                         <input type="checkbox" id="evenDehlaToggle" style="width: 18px; height: 18px; cursor: pointer;">
                         <span style="font-weight: 500; font-size: 0.95rem;">Even Dehla Rule</span>
                     </label>
+                </div>
+                <!-- 🌟 NEW: Round Limit Toggle -->
+                <div class="premium-checkbox-container mb-3 text-start">
+                    <label style="cursor: pointer; display: flex; align-items: center; gap: 10px; margin: 0;">
+                        <input type="checkbox" id="roundLimitToggle" onchange="toggleStepper()" style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-weight: 500; font-size: 0.95rem;">Enable Round Limit</span>
+                    </label>
+                </div>
+
+                <!-- 🌟 NEW: Stepper UI (Hidden by default) -->
+                <div id="stepper-ui" class="stepper-container mb-4" style="display: none;">
+                    <!-- Mouse and Touch events added for fast-increment -->
+                    <button id="step-down" class="btn-stepper"
+                            onmousedown="startStepper('down')" onmouseup="stopStepper()" onmouseleave="stopStepper()"
+                            ontouchstart="startStepper('down')" ontouchend="stopStepper()">-</button>
+
+                    <span class="fs-4 fw-bold text-white tracking-wide"><span id="round-limit-val">5</span> Rnds</span>
+
+                    <button id="step-up" class="btn-stepper"
+                            onmousedown="startStepper('up')" onmouseup="stopStepper()" onmouseleave="stopStepper()"
+                            ontouchstart="startStepper('up')" ontouchend="stopStepper()">+</button>
                 </div>
 
                 <button class="btn btn-premium btn-lg w-100 mb-4" onclick="createRoom()">Create New Room</button>
@@ -752,10 +813,11 @@
               document.getElementById("modal-match-score").innerText = `${state.matchScoreA || 0} - ${state.matchScoreB || 0}`;
 
               if (state.currentPhase === "MATCH_OVER") {
-                  document.getElementById("victory-buttons").style.display = "none"; document.getElementById("game-over-message").style.display = "block";
+                  document.getElementById("victory-buttons").style.setProperty("display", "none", "important");
+                  document.getElementById("game-over-message").style.display = "block";
                   const grandMsg = document.getElementById("game-over-message");
-                  if (state.matchScoreA > state.matchScoreB) grandMsg.innerHTML = "🏆 TEAM A WINS! 🏆<br><button class='btn btn-light mt-3' onclick='leaveRoom()'>Leave Table</button>";
-                  else if (state.matchScoreB > state.matchScoreA) grandMsg.innerHTML = "🏆 TEAM B WINS! 🏆<br><button class='btn btn-light mt-3' onclick='leaveRoom()'>Leave Table</button>";
+                  if (state.matchScoreA > state.matchScoreB) grandMsg.innerHTML = "🏆 TEAM A WINS! 🏆<br><button class='btn btn-light mt-3 px-4 rounded-pill fw-bold text-dark' onclick='leaveRoom()'>Leave Table</button>";
+                  else if (state.matchScoreB > state.matchScoreA) grandMsg.innerHTML = "🏆 TEAM B WINS! 🏆<br><button class='btn btn-light mt-3 px-4 rounded-pill fw-bold text-dark' onclick='leaveRoom()'>Leave Table</button>";
                   else grandMsg.innerHTML = "🤝 TIE MATCH! 🤝<br><button class='btn btn-light mt-3' onclick='leaveRoom()'>Leave Table</button>";
                   document.querySelector("#victory-screen h2").innerText = "Match Finished!";
               } else {
@@ -789,6 +851,47 @@
       };
 
       // --- ACTIONS ---
+       // ==========================================
+      // 🌟 NEW: ROUND LIMIT STEPPER LOGIC
+      // ==========================================
+      let currentLimit = 5;
+      let stepperInterval = null;
+      let stepTimeout = null;
+
+      function toggleStepper() {
+          const isChecked = document.getElementById("roundLimitToggle").checked;
+          document.getElementById("stepper-ui").style.display = isChecked ? "flex" : "none";
+      }
+
+      function startStepper(dir) {
+          step(dir); // Initial single click step
+          // Add a 400ms delay before fast-increment starts (feels like a native mobile app)
+          stepTimeout = setTimeout(() => {
+              stepperInterval = setInterval(() => step(dir), 100);
+          }, 400);
+      }
+
+      function stopStepper() {
+          clearTimeout(stepTimeout);
+          clearInterval(stepperInterval);
+      }
+
+      function step(dir) {
+          if (dir === 'up' && currentLimit < 100) currentLimit++;
+          else if (dir === 'down' && currentLimit > 1) currentLimit--;
+
+          document.getElementById("round-limit-val").innerText = currentLimit;
+
+          // Visual feedback for boundaries
+          const btnDown = document.getElementById("step-down");
+          const btnUp = document.getElementById("step-up");
+          btnDown.classList.toggle("disabled", currentLimit <= 1);
+          btnUp.classList.toggle("disabled", currentLimit >= 100);
+
+          // Stop fast-increment if boundary is reached
+          if (currentLimit <= 1 || currentLimit >= 100) stopStepper();
+      }
+
       function createRoom() {
     const name = document.getElementById("player-name").value.trim();
 
@@ -800,13 +903,15 @@
     // 🌟 NEW: Check if the user turned on the Even Dehla rule
     // (Make sure the checkbox in your HTML has the id="evenDehlaToggle")
     const isEvenDehla = document.getElementById("evenDehlaToggle").checked;
+    const isLimitEnabled = document.getElementById("roundLimitToggle").checked;
 
     ws.send(JSON.stringify({
         action: "CREATE_ROOM",
         playerName: name,
         // 🌟 NEW: Pass the settings object exactly how Jackson expects it
         settings: {
-            strictSweepEnabled: isEvenDehla
+            strictSweepEnabled: isEvenDehla,
+            maxRounds: isLimitEnabled ? currentLimit : null
         }
     }));
 }

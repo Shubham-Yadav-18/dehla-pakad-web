@@ -23,6 +23,7 @@ public class GameRoom {
     private Player lastWinningPlayerForSweep; // Now we track the specific player!
     private int teamAFinalPoints;
     private int teamBFinalPoints;
+    private int currentRoundNumber = 1;
 
 
     private int matchPointsTeamA = 0;
@@ -230,8 +231,14 @@ public class GameRoom {
                 sweepTableForTeam(trickWinner.getTeam());
             }
 
-            // 2. Change phase to tell the UI the game is over
-            this.currentPhase = GamePhase.ROUND_OVER;
+            // 2. 🌟 NEW: Check the Round Limit before setting the phase
+            if (this.rules.maxRounds != null && this.currentRoundNumber >= this.rules.maxRounds) {
+                this.currentPhase = GamePhase.MATCH_OVER;
+                System.out.println("[ROOM " + this.roomId + "] MATCH LIMIT REACHED! Ending match.");
+            } else {
+                this.currentPhase = GamePhase.ROUND_OVER;
+                System.out.println("[ROOM " + this.roomId + "] Round Over. Ready for next round.");
+            }
 
             // 3. Convert Dehlas into actual Game Points using our ScoreManager!
             Map<Team, Integer> finalScores = ScoreManager.calculateRoundScore(
@@ -301,6 +308,7 @@ public class GameRoom {
         this.lastWinningPlayerForSweep = null;
         this.tableAccumulator.clear();
         this.currentTrick = new Trick();
+        this.currentRoundNumber++;
 
         // Deal a brand new deck and start!
         startGame();
