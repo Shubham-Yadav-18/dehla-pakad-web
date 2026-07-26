@@ -495,7 +495,7 @@
                 <span class="text-primary">Team B: <span class="text-white ms-2" id="menu-scoreB">0</span></span>
             </div>
         </div>
-
+        <button id="mute-toggle-btn" class="btn btn-outline-light w-100 mb-3 rounded-pill fw-bold" style="border-color: var(--glass-border);" onclick="toggleMute()">🔊 Mute Sounds</button>
         <button class="btn btn-outline-light w-100 mb-3 rounded-pill fw-bold" style="border-color: var(--glass-border);" onclick="toggleScoreboard()">📊 Match Scoreboard</button>
         <button class="btn btn-premium-danger btn-lg w-100 mb-4" onclick="leaveRoom()">🚪 Leave Game</button>
         <button class="btn btn-premium btn-lg w-100 mt-1" onclick="toggleGameMenu()">Resume Game</button>
@@ -607,6 +607,39 @@
     const ws = new WebSocket(protocol + hostAddress + "/game");
 
     let mySecretToken = localStorage.getItem("dehlaToken");
+    // ==================== Sound System starts ======================
+      // 🌟 NEW: AUDIO ENGINE
+      // ==========================================
+      let isMuted = false;
+      let hasPlayedBowniCallThisRound = false;
+      let hasPlayedVictorySoundThisRound = false;
+      // 🌟 AUDIO STATE TRACKERS
+      let prevTableCardCount = 0;
+      let prevDehlaScoreA = 0;
+      let prevDehlaScoreB = 0;
+
+      function toggleMute() {
+          isMuted = !isMuted;
+          const btn = document.getElementById("mute-toggle-btn");
+          btn.innerText = isMuted ? "🔇 Unmute Sounds" : "🔊 Mute Sounds";
+      }
+
+      function playSound(soundId, allowOverlap = false) {
+          if (isMuted) return;
+          const audio = document.getElementById(soundId);
+          if (audio) {
+              if (allowOverlap) {
+                  // Production trick: Clone the audio node so rapid card snaps can overlap naturally
+                  const clonedAudio = audio.cloneNode();
+                  clonedAudio.play().catch(e => console.log("Audio blocked by browser:", e));
+              } else {
+                  audio.currentTime = 0;
+                  audio.play().catch(e => console.log("Audio blocked by browser:", e));
+              }
+          }
+      }
+
+      // Sound System ends
 
       ws.onopen = () => {
           document.getElementById("lobby-status").innerText = "Connected! Welcome.";
@@ -681,11 +714,16 @@
       ws.onmessage = (event) => {
           const state = JSON.parse(event.data);
           if (state.errorMessage) {
-              alert(state.errorMessage);
-              if (state.errorMessage.includes("expired") || state.errorMessage.includes("rejoin")) {
-                  localStorage.removeItem("dehlaToken"); location.reload();
+            if (state.errorType === "RULE_VIOLATION") {
+                playSound("sfx-error");
+            } else{
+                  alert(state.errorMessage);
+                  if (state.errorMessage.includes("expired") || state.errorMessage.includes("rejoin")) {
+                      localStorage.removeItem("dehlaToken"); location.reload();
+                  }
               }
-              return;
+
+            return;
           }
 
           if (state.myToken && state.myToken !== mySecretToken) {
@@ -744,6 +782,31 @@
               } else if (state.currentTurnPlayerName === leftPlayer) { document.getElementById("pod-left").classList.add("active-turn"); }
           }
 
+          //Card snap and dehla capture sound logic starts here
+          // 1. CARD SNAP TRIGGER
+          console.log("Current Trick Data:", state.currentTrickCards);
+          const currentTableCardCount = state.currentTrickCards ? state.currentTrickCards.length : 0;
+          if (currentTableCardCount > prevTableCardCount) {
+              playSound("sfx-card-snap", true);
+          }
+          prevTableCardCount = currentTableCardCount;
+
+          // 2. DEHLA CAPTURE TRIGGER (With Priority Check)
+          const teamACapturedDehla = state.teamAScore > prevDehlaScoreA;
+          const teamBCapturedDehla = state.teamBScore > prevDehlaScoreB;
+
+          if (teamACapturedDehla || teamBCapturedDehla) {
+              const isBowniEnding = (state.currentPhase === "ROUND_OVER" || state.currentPhase === "MATCH_OVER") && state.bowniTeam;
+              if (!isBowniEnding) {
+                  playSound("sfx-dehla-capture");
+              }
+          }
+
+          prevDehlaScoreA = state.teamAScore;
+          prevDehlaScoreB = state.teamBScore;
+          //Card snap and dehla capture sound logic ends here
+
+
           // ==========================================
           // RENDER TABLE CARDS (Directionally Accurate Toss!)
           // ==========================================
@@ -772,6 +835,13 @@
          // Cards are ONLY clickable during MAIN_PLAY
           // 🌟 BUG FIX: Allow clicking during both the Trump Discovery phase AND Main Play!
           const canIPlay = state.isMyTurn && !state.isPaused && (state.currentPhase === "MAIN_PLAY" || state.currentPhase === "DISCOVERING_TRUMP" );
+          // 🌟 RESET FLAGS IF A NEW ROUND STARTS
+          if (!state.bowniTeam) {
+              hasPlayedBowniCallThisRound = false;
+          }
+          if (state.currentPhase !== "ROUND_OVER" && state.currentPhase !== "MATCH_OVER") {
+              hasPlayedVictorySoundThisRound = false;
+          }
           // 🌟 NEW: Add these UI Toggles right here!
           document.getElementById("bowni-container").style.display = (state.currentPhase === "BOWNI_DECLARATION") ? "block" : "none";
           const badge = document.getElementById("bowni-badge");
@@ -779,6 +849,12 @@
               badge.style.display = "block";
               badge.innerText = `🔥 ${state.bowniTeam === 'TEAM_A' ? 'Team A' : 'Team B'} : Bowni!`;
               badge.style.border = `2px solid ${state.bowniTeam === 'TEAM_A' ? '#e74c3c' : '#3498db'}`;
+
+              // 🌟 PLAY CALL SOUND (Only once per round)
+              if (!hasPlayedBowniCallThisRound && state.currentPhase === "MAIN_PLAY") {
+                  playSound("sfx-bowni-call");
+                  hasPlayedBowniCallThisRound = true;
+              }
           } else {
               badge.style.display = "none";
           }
@@ -828,11 +904,23 @@
                   if (state.bowniTeam) {
                       // --- 🔥 HIGH STAKES BOWNI OUTCOMES ---
                       if (state.bowniTeam === 'TEAM_A') {
-                          if (state.teamAScore === 4) winnerText = "🔥 TEAM A BOWNI SUCCESSFUL! 🔥";
-                          else winnerText = "💥 BOWNI FAILED! TEAM B WINS! 💥";
+                          if (state.teamAScore === 4){
+                              winnerText = "🔥 TEAM A BOWNI SUCCESSFUL! 🔥";
+                              if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-success");
+                          }
+                          else{
+                             winnerText = "💥 BOWNI FAILED! TEAM B WINS! 💥";
+                             if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-fail");
+                           }
                       } else if (state.bowniTeam === 'TEAM_B') {
-                          if (state.teamBScore === 4) winnerText = "🔥 TEAM B BOWNI SUCCESSFUL! 🔥";
-                          else winnerText = "💥 BOWNI FAILED! TEAM A WINS! 💥";
+                          if (state.teamBScore === 4) {
+                             winnerText = "🔥 TEAM B BOWNI SUCCESSFUL! 🔥";
+                             if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-success");
+                           }
+                          else {
+                             winnerText = "💥 BOWNI FAILED! TEAM A WINS! 💥";
+                             if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-fail");
+                          }
                       }
                   } else {
                       // --- 🟢 NORMAL GAME OUTCOMES ---
@@ -924,5 +1012,12 @@
       function playCard(cardString) { const parts = cardString.split(" of "); ws.send(JSON.stringify({ action: "PLAY_CARD", suit: parts[1], rank: parts[0] })); }
       function callBowni() { ws.send(JSON.stringify({ action: "CALL_BOWNI" })); }
 </script>
+<!-- 🌟 NEW: Hidden Audio Engine -->
+<audio id="sfx-bowni-call" src="sounds/bowni-call.mp3" preload="auto"></audio>
+<audio id="sfx-bowni-success" src="sounds/bowni-success.mp3" preload="auto"></audio>
+<audio id="sfx-bowni-fail" src="sounds/bowni-fail.mp3" preload="auto"></audio>
+<audio id="sfx-card-snap" src="sounds/card-snap.mp3" preload="auto"></audio>
+<audio id="sfx-error" src="sounds/error.mp3" preload="auto"></audio>
+<audio id="sfx-dehla-capture" src="sounds/dehla-capture.mp3" preload="auto"></audio>
 </body>
 </html>

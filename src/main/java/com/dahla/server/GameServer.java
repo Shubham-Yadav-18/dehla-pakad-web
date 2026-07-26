@@ -155,76 +155,83 @@ public class GameServer {
                         if (room == null) return;
 
                         if ("PLAY_CARD".equals(action.action)) {
-                            Card cardToPlay = player.getHand().stream()
-                                    .filter(c -> c.getSuit().name().equals(action.suit) && c.getRank().name().equals(action.rank))
-                                    .findFirst()
-                                    .orElseThrow(() -> new IllegalArgumentException("Card not found!"));
+                            try {
+                                Card cardToPlay = player.getHand().stream()
+                                        .filter(c -> c.getSuit().name().equals(action.suit) && c.getRank().name().equals(action.rank))
+                                        .findFirst()
+                                        .orElseThrow(() -> new IllegalArgumentException("Card not found!"));
 
-                            room.playCard(player, cardToPlay);
-                            broadcastToRoom(room); // Instantly broadcast so everyone sees the 4th card land
-                            // 🛡️ THE LOCK: Only spawn the timer if we aren't already resolving!
-                            if (room.isTrickPaused && !room.isTrickResolving) {
-                                room.isTrickResolving = true;
-                                System.out.println("[TIMER] Trick finished. Starting 2.5s animation timer for Room: " + room.getRoomId());
+                                room.playCard(player, cardToPlay);
+                                broadcastToRoom(room); // Instantly broadcast so everyone sees the 4th card land
+                                // 🛡️ THE LOCK: Only spawn the timer if we aren't already resolving!
+                                if (room.isTrickPaused && !room.isTrickResolving) {
+                                    room.isTrickResolving = true;
+                                    System.out.println("[TIMER] Trick finished. Starting 2.5s animation timer for Room: " + room.getRoomId());
 
-                                // 🌟 NEW FIX 3: Self-Polling Runnable to prevent Timer Collisions
-                                scheduler.schedule(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        try {
-                                            // 🛡️ THE ARMOR: If someone disconnected, DO NOT sweep the trick! Wait 1s and check again.
-                                            if (room.isNetworkPaused) {
-                                                System.out.println("[TIMER] Room " + room.getRoomId() + " is frozen. Trick resolution paused. Waiting 1s...");
-                                                scheduler.schedule(this, 1000, TimeUnit.MILLISECONDS);
-                                                return;
-                                            }
+                                    // 🌟 NEW FIX 3: Self-Polling Runnable to prevent Timer Collisions
+                                    scheduler.schedule(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            try {
+                                                // 🛡️ THE ARMOR: If someone disconnected, DO NOT sweep the trick! Wait 1s and check again.
+                                                if (room.isNetworkPaused) {
+                                                    System.out.println("[TIMER] Room " + room.getRoomId() + " is frozen. Trick resolution paused. Waiting 1s...");
+                                                    scheduler.schedule(this, 1000, TimeUnit.MILLISECONDS);
+                                                    return;
+                                                }
 
-                                            System.out.println("[TIMER] 2.5s passed. Resolving trick for Room: " + room.getRoomId());
-                                            room.finalizeTrick();
-                                            room.isTrickResolving = false;// Unlock the door
-                                            broadcastToRoom(room);
+                                                System.out.println("[TIMER] 2.5s passed. Resolving trick for Room: " + room.getRoomId());
+                                                room.finalizeTrick();
+                                                room.isTrickResolving = false;// Unlock the door
+                                                broadcastToRoom(room);
 
-                                            // If we just entered Bowni Phase, start the 10s clock!
-                                            if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION && !room.isBowniTimerStarted) {
-                                                System.out.println("[TIMER] Bowni Phase hit! Starting 10s countdown for Room: " + room.getRoomId());
-                                                room.isBowniTimerStarted = true;
+                                                // If we just entered Bowni Phase, start the 10s clock!
+                                                if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION && !room.isBowniTimerStarted) {
+                                                    System.out.println("[TIMER] Bowni Phase hit! Starting 10s countdown for Room: " + room.getRoomId());
+                                                    room.isBowniTimerStarted = true;
 
-                                                // 🌟 NEW FIX 4: Self-Polling Runnable for the Bowni Timer
-                                                scheduler.schedule(new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        try {
-                                                            // 🛡️ THE ARMOR: Pause the countdown if the room is frozen
-                                                            if (room.isNetworkPaused) {
-                                                                System.out.println("[TIMER] Room " + room.getRoomId() + " is frozen. Bowni countdown paused. Waiting 1s...");
-                                                                scheduler.schedule(this, 1000, TimeUnit.MILLISECONDS);
-                                                                return;
+                                                    // 🌟 NEW FIX 4: Self-Polling Runnable for the Bowni Timer
+                                                    scheduler.schedule(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            try {
+                                                                // 🛡️ THE ARMOR: Pause the countdown if the room is frozen
+                                                                if (room.isNetworkPaused) {
+                                                                    System.out.println("[TIMER] Room " + room.getRoomId() + " is frozen. Bowni countdown paused. Waiting 1s...");
+                                                                    scheduler.schedule(this, 1000, TimeUnit.MILLISECONDS);
+                                                                    return;
+                                                                }
+
+                                                                // If nobody clicked it after 10s, silently start the game
+                                                                if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION) {
+                                                                    System.out.println("[TIMER] 10s passed. Nobody called Bowni. Auto-starting Main Play.");
+                                                                    room.setCurrentPhase(GamePhase.MAIN_PLAY);
+                                                                    broadcastToRoom(room);
+                                                                }
+                                                            } catch (Exception e) {
+                                                                System.err.println("[CRITICAL ERROR] Bowni Timer Crashed: " + e.getMessage());
+                                                                e.printStackTrace();
                                                             }
-
-                                                            // If nobody clicked it after 10s, silently start the game
-                                                            if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION) {
-                                                                System.out.println("[TIMER] 10s passed. Nobody called Bowni. Auto-starting Main Play.");
-                                                                room.setCurrentPhase(GamePhase.MAIN_PLAY);
-                                                                broadcastToRoom(room);
-                                                            }
-                                                        } catch (Exception e) {
-                                                            System.err.println("[CRITICAL ERROR] Bowni Timer Crashed: " + e.getMessage());
-                                                            e.printStackTrace();
                                                         }
-                                                    }
-                                                }, 10, TimeUnit.SECONDS);
+                                                    }, 10, TimeUnit.SECONDS);
+                                                }
+                                            } catch (Exception e) {
+                                                System.err.println("[CRITICAL ERROR] Trick Resolution Timer Crashed! " + e.getMessage());
+                                                e.printStackTrace();
+                                                // Emergency unfreeze so players can keep playing
+                                                room.isTrickPaused = false;
+                                                room.isTrickResolving = false; // Emergency unlock
+                                                broadcastToRoom(room);
                                             }
-                                        } catch (Exception e) {
-                                            System.err.println("[CRITICAL ERROR] Trick Resolution Timer Crashed! " + e.getMessage());
-                                            e.printStackTrace();
-                                            // Emergency unfreeze so players can keep playing
-                                            room.isTrickPaused = false;
-                                            room.isTrickResolving = false; // Emergency unlock
-                                            broadcastToRoom(room);
                                         }
-                                    }
-                                }, 2500, TimeUnit.MILLISECONDS);
+                                    }, 2500, TimeUnit.MILLISECONDS);
+                                }
+                            }catch (IllegalArgumentException | IllegalStateException e) {
+                                // 🌟 FIX: Added an "errorType" flag to the JSON payload
+                                String errorJson = String.format("{\"errorMessage\": \"%s\", \"errorType\": \"RULE_VIOLATION\"}", e.getMessage().replace("\"", "\\\""));
+                                ctx.send(errorJson);
                             }
+
                         }
                         else if ("CALL_BOWNI".equals(action.action)) {
                             if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION) {
