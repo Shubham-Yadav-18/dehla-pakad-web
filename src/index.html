@@ -882,58 +882,73 @@
 
           const victoryScreen = document.getElementById("victory-screen");
           if (state.currentPhase === "ROUND_OVER" || state.currentPhase === "MATCH_OVER") {
-              let currentPtsA = 0, currentPtsB = 0;
-              if (state.historyTeamA && state.historyTeamA.length > 0) { currentPtsA = state.historyTeamA[state.historyTeamA.length - 1]; currentPtsB = state.historyTeamB[state.historyTeamB.length - 1]; }
-              document.getElementById("modal-dehlasA").innerText = state.teamAScore; document.getElementById("modal-dehlasB").innerText = state.teamBScore;
-              document.getElementById("modal-pointsA").innerText = currentPtsA; document.getElementById("modal-pointsB").innerText = currentPtsB;
-              document.getElementById("modal-match-score").innerText = `${state.matchScoreA || 0} - ${state.matchScoreB || 0}`;
+    // 1. UPDATE SCORES (Runs for both phases)
+    let currentPtsA = 0, currentPtsB = 0;
+    if (state.historyTeamA && state.historyTeamA.length > 0) {
+        currentPtsA = state.historyTeamA[state.historyTeamA.length - 1];
+        currentPtsB = state.historyTeamB[state.historyTeamB.length - 1];
+    }
+    document.getElementById("modal-dehlasA").innerText = state.teamAScore;
+    document.getElementById("modal-dehlasB").innerText = state.teamBScore;
+    document.getElementById("modal-pointsA").innerText = currentPtsA;
+    document.getElementById("modal-pointsB").innerText = currentPtsB;
+    document.getElementById("modal-match-score").innerText = `${state.matchScoreA || 0} - ${state.matchScoreB || 0}`;
 
-              if (state.currentPhase === "MATCH_OVER") {
-                  document.getElementById("victory-buttons").style.setProperty("display", "none", "important");
-                  document.getElementById("game-over-message").style.display = "block";
-                  const grandMsg = document.getElementById("game-over-message");
-                  if (state.matchScoreA > state.matchScoreB) grandMsg.innerHTML = "🏆 TEAM A WINS! 🏆<br><button class='btn btn-light mt-3 px-4 rounded-pill fw-bold text-dark' onclick='leaveRoom()'>Leave Table</button>";
-                  else if (state.matchScoreB > state.matchScoreA) grandMsg.innerHTML = "🏆 TEAM B WINS! 🏆<br><button class='btn btn-light mt-3 px-4 rounded-pill fw-bold text-dark' onclick='leaveRoom()'>Leave Table</button>";
-                  else grandMsg.innerHTML = "🤝 TIE MATCH! 🤝<br><button class='btn btn-light mt-3' onclick='leaveRoom()'>Leave Table</button>";
-                  document.querySelector("#victory-screen h2").innerText = "Match Finished!";
-              } else {
-                  document.getElementById("victory-buttons").style.display = "flex"; document.getElementById("game-over-message").style.display = "none";
-                  document.querySelector("#victory-screen h2").innerText = "Round Over!";
-                  let winnerText = "It's a Tie!";
+    // 2. EVALUATE THE ROUND & PLAY AUDIO (Runs for both phases!)
+    let winnerText = "It's a Tie!";
 
-                  if (state.bowniTeam) {
-                      // --- 🔥 HIGH STAKES BOWNI OUTCOMES ---
-                      if (state.bowniTeam === 'TEAM_A') {
-                          if (state.teamAScore === 4){
-                              winnerText = "🔥 TEAM A BOWNI SUCCESSFUL! 🔥";
-                              if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-success");
-                          }
-                          else{
-                             winnerText = "💥 BOWNI FAILED! TEAM B WINS! 💥";
-                             if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-fail");
-                           }
-                      } else if (state.bowniTeam === 'TEAM_B') {
-                          if (state.teamBScore === 4) {
-                             winnerText = "🔥 TEAM B BOWNI SUCCESSFUL! 🔥";
-                             if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-success");
-                           }
-                          else {
-                             winnerText = "💥 BOWNI FAILED! TEAM A WINS! 💥";
-                             if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-fail");
-                          }
-                      }
-                  } else {
-                      // --- 🟢 NORMAL GAME OUTCOMES ---
-                      if (state.teamAScore > state.teamBScore) winnerText = "Team A Wins Round!";
-                      if (state.teamBScore > state.teamAScore) winnerText = "Team B Wins Round!";
-                      if (state.teamAScore === 4) winnerText = "🏆 TEAM A NATURAL KOT! 🏆";
-                      if (state.teamBScore === 4) winnerText = "🏆 TEAM B NATURAL KOT! 🏆";
-                  }
+    if (state.bowniTeam) {
+        // --- 🔥 HIGH STAKES BOWNI OUTCOMES ---
+        if (state.bowniTeam === 'TEAM_A') {
+            if (state.teamAScore === 4){
+                winnerText = "🔥 TEAM A BOWNI SUCCESSFUL! 🔥";
+                if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-success");
+            } else {
+               winnerText = "💥 BOWNI FAILED! TEAM B WINS! 💥";
+               if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-fail");
+             }
+        } else if (state.bowniTeam === 'TEAM_B') {
+            if (state.teamBScore === 4) {
+               winnerText = "🔥 TEAM B BOWNI SUCCESSFUL! 🔥";
+               if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-success");
+             } else {
+               winnerText = "💥 BOWNI FAILED! TEAM A WINS! 💥";
+               if (!hasPlayedVictorySoundThisRound) playSound("sfx-bowni-fail");
+            }
+        }
+    } else {
+        // --- 🟢 NORMAL GAME OUTCOMES ---
+        if (state.teamAScore > state.teamBScore) winnerText = "Team A Wins Round!";
+        if (state.teamBScore > state.teamAScore) winnerText = "Team B Wins Round!";
+        if (state.teamAScore === 4) winnerText = "🏆 TEAM A NATURAL KOT! 🏆";
+        if (state.teamBScore === 4) winnerText = "🏆 TEAM B NATURAL KOT! 🏆";
+    }
 
-                  document.getElementById("victory-title").innerText = winnerText;
-              }
-              victoryScreen.style.setProperty("display", "flex", "important");
-          } else {
+    document.getElementById("victory-title").innerText = winnerText;
+
+    // 3. UI TOGGLES: MATCH OVER vs ROUND OVER
+    if (state.currentPhase === "MATCH_OVER") {
+        document.getElementById("victory-buttons").style.setProperty("display", "none", "important");
+        document.getElementById("game-over-message").style.display = "block";
+        document.querySelector("#victory-screen h2").innerText = "Match Finished!";
+
+        const grandMsg = document.getElementById("game-over-message");
+        if (state.matchScoreA > state.matchScoreB) {
+            grandMsg.innerHTML = "🏆 TEAM A WINS THE MATCH! 🏆<br><button class='btn btn-light mt-3 px-4 rounded-pill fw-bold text-dark' onclick='leaveRoom()'>Leave Table</button>";
+        } else if (state.matchScoreB > state.matchScoreA) {
+            grandMsg.innerHTML = "🏆 TEAM B WINS THE MATCH! 🏆<br><button class='btn btn-light mt-3 px-4 rounded-pill fw-bold text-dark' onclick='leaveRoom()'>Leave Table</button>";
+        } else {
+            grandMsg.innerHTML = "🤝 TIE MATCH! 🤝<br><button class='btn btn-light mt-3' onclick='leaveRoom()'>Leave Table</button>";
+        }
+    } else {
+        document.getElementById("victory-buttons").style.display = "flex";
+        document.getElementById("game-over-message").style.display = "none";
+        document.querySelector("#victory-screen h2").innerText = "Round Over!";
+    }
+
+    // 4. SHOW THE MODAL
+    victoryScreen.style.setProperty("display", "flex", "important");
+} else {
               victoryScreen.style.setProperty("display", "none", "important");
           }
       };
