@@ -377,6 +377,13 @@ public class GameServer {
             update.historyTeamA = room.getHistoryTeamA();
             update.historyTeamB = room.getHistoryTeamB();
 
+            // 🌟 NEW: UI Display Data
+            update.isEvenDehla = room.getRules().strictSweepEnabled;
+            update.maxRounds = room.getRules().maxRounds;
+
+            update.playerTeams = room.getPlayers().stream()
+                    .collect(Collectors.toMap(Player::getName, p -> p.getTeam().name()));
+
             try {
                 if (connection.session.isOpen()) {
                     connection.send(jsonMapper.writeValueAsString(update));

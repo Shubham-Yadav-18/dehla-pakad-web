@@ -1,0 +1,31 @@
+I am developing a multiplayer card game called 'Dehla Pakad'. Here is the complete architectural context of my project. Read this carefully and acknowledge you understand. Do not write any code yet, just confirm you have internalized these rules.
+
+1. Tech Stack:
+
+Backend: Java 17+, Javalin (WebSockets), Jackson (JSON serialization). No database (in-memory concurrent maps).
+
+Frontend: Single-file index.html using Vanilla JavaScript, HTML5, CSS3, and Bootstrap 5. No React/Vue. No build tools.
+
+2. Core Architecture Rules (STRICT):
+
+Dumb Frontend, Smart Backend: The JavaScript frontend computes ZERO game logic. It only sends PlayerAction JSON to the server, and blindly renders whatever is inside the GameStateUpdate JSON it receives.
+
+Wipe-and-Redraw UI: The JS ws.onmessage loop wipes the DOM (e.g., tableDiv.innerHTML = "") and redraws it every single time a state update arrives.
+
+Thread Safety: The server uses ConcurrentHashMap for all player/room tracking. Timers are handled via ScheduledExecutorService (Self-polling runnables), NEVER Thread.sleep().
+
+Immutable Rules: Room rules (RoomSettings) are instantiated once on creation and marked as final. They are read-only forever.
+
+Ghost Connection Protection: Disconnects trigger a 60s doomsday ScheduledFuture. Reconnections instantly kill old ghost WebSocket contexts and map the new context to the player's Secret Token.
+
+3. WebSocket Payload Structures:
+
+Client -> Server (PlayerAction.java): { action: "...", suit: "...", rank: "...", playerName: "...", playerToken: "...", roomCode: "...", settings: {...} }
+
+Server -> Client (GameStateUpdate.java): Contains currentPhase (WAITING_FOR_PLAYERS, DISCOVERING_TRUMP, SECOND_DEAL, BOWNI_DECLARATION, MAIN_PLAY, ROUND_OVER, MATCH_OVER), isPaused, isMyTurn, myHand, currentTrickCards, teamAScore, teamBScore, matchScoreA/B, seatingOrder, playerTeams, isEvenDehla, maxRounds, and errorMessage.
+
+4. Visual & Audio Engine:
+
+Audio: Managed by HTML <audio> tags. Sound effects allow overlap using audio.cloneNode().play() triggered by comparing previous state sizes to current state sizes in JS.
+
+CSS: Glassmorphism UI, extensive use of flexbox/grid, and distinct media queries for mobile-portrait vs mobile-landscape orientation.

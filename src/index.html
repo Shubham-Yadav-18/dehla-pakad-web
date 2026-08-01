@@ -487,7 +487,6 @@
     <div class="glass-panel text-center w-100 mx-3" style="max-width: 380px;">
         <h3 class="page-title mb-2">Game Menu</h3>
         <p class="fs-5 mb-4 text-white">Room Code: <strong class="text-primary" id="menu-room-code" style="font-size: 1.2em; text-shadow: 0 0 10px rgba(37,99,235,0.5);">####</strong></p>
-
         <div class="glass-inner p-3 mb-4">
             <h6 class="mb-3 text-muted border-bottom border-secondary pb-2 tracking-wide text-uppercase" style="font-size: 0.85rem;">Current Round Dehlas</h6>
             <div class="d-flex justify-content-between fs-5 fw-bold">
@@ -496,6 +495,7 @@
             </div>
         </div>
         <button id="mute-toggle-btn" class="btn btn-outline-light w-100 mb-3 rounded-pill fw-bold" style="border-color: var(--glass-border);" onclick="toggleMute()">🔊 Mute Sounds</button>
+        <button class="btn btn-outline-light w-100 mb-3 rounded-pill fw-bold" style="border-color: var(--glass-border);" onclick="toggleRulesScreen()">📜 Room Rules</button>
         <button class="btn btn-outline-light w-100 mb-3 rounded-pill fw-bold" style="border-color: var(--glass-border);" onclick="toggleScoreboard()">📊 Match Scoreboard</button>
         <button class="btn btn-premium-danger btn-lg w-100 mb-4" onclick="leaveRoom()">🚪 Leave Game</button>
         <button class="btn btn-premium btn-lg w-100 mt-1" onclick="toggleGameMenu()">Resume Game</button>
@@ -564,6 +564,31 @@
         </div>
 
         <button class="btn btn-premium w-100 rounded-pill py-2" onclick="toggleScoreboard()">Close</button>
+    </div>
+</div>
+
+<div id="rules-screen" class="position-fixed top-0 start-0 w-100 h-100 justify-content-center align-items-center" style="background: rgba(0,0,0,0.85); z-index: 3000; display: none; backdrop-filter: blur(5px);">
+    <div class="glass-panel text-center w-100 mx-3" style="max-width: 400px; max-height: 90vh; display: flex; flex-direction: column;">
+        <h3 class="page-title mb-3">Room Rules</h3>
+
+        <!-- Scrollable container ready for future rules -->
+        <div class="hide-inner-scroll text-start" style="flex-grow: 1; overflow-y: auto; margin-bottom: 15px; border-radius: 8px;">
+            <table class="glass-table w-100 m-0">
+                <tbody id="rules-table-body">
+                <tr>
+                    <td class="text-white fw-bold">Even Dehla Rule</td>
+                    <td class="text-end" id="menu-rule-even">...</td>
+                </tr>
+                <tr>
+                    <td class="text-white fw-bold">Round Limit</td>
+                    <td class="text-end" id="menu-rule-limit">...</td>
+                </tr>
+                <!-- In the future, just add new <tr> tags here! -->
+                </tbody>
+            </table>
+        </div>
+
+        <button class="btn btn-premium w-100 rounded-pill py-2" onclick="toggleRulesScreen()">Close</button>
     </div>
 </div>
 
@@ -756,10 +781,32 @@
               topPlayer = state.seatingOrder[(myIndex + 2) % state.seatingOrder.length] || "Waiting...";
               leftPlayer = state.seatingOrder[(myIndex + 3) % state.seatingOrder.length] || "Waiting...";
 
-              document.getElementById("bottom-pod-name").innerText = state.myName + " (You)";
-              document.getElementById("right-pod-name").innerText = rightPlayer;
-              document.getElementById("top-pod-name").innerText = topPlayer;
-              document.getElementById("left-pod-name").innerText = leftPlayer;
+              if (myIndex !== -1 && state.seatingOrder.length > 0) {
+              // Anti-Clockwise mapping: Right is +1, Top is +2, Left is +3
+              rightPlayer = state.seatingOrder[(myIndex + 1) % state.seatingOrder.length] || "Waiting...";
+              topPlayer = state.seatingOrder[(myIndex + 2) % state.seatingOrder.length] || "Waiting...";
+              leftPlayer = state.seatingOrder[(myIndex + 3) % state.seatingOrder.length] || "Waiting...";
+
+              // 🌟 NEW: Helper to generate Team Badges
+              const getBadge = (pName) => {
+                  if (!state.playerTeams || pName === "Waiting...") return "";
+                  const team = state.playerTeams[pName];
+                  return team === 'TEAM_A' ? `<span class="badge bg-danger ms-2" style="font-size: 0.7rem;">A</span>` : `<span class="badge bg-primary ms-2" style="font-size: 0.7rem;">B</span>`;
+              };
+
+              // 🌟 UPDATE: Use innerHTML to inject the badge alongside the name
+              document.getElementById("bottom-pod-name").innerHTML = getBadge(state.myName) + state.myName + " (You)";
+              document.getElementById("right-pod-name").innerHTML = getBadge(rightPlayer) + rightPlayer;
+              document.getElementById("top-pod-name").innerHTML = getBadge(topPlayer) + topPlayer;
+              document.getElementById("left-pod-name").innerHTML = getBadge(leftPlayer) + leftPlayer;
+          }
+
+          // 🌟 NEW: Update the Immutable Menu Rules
+          const evenRuleSpan = document.getElementById("menu-rule-even");
+          if (evenRuleSpan) {
+              evenRuleSpan.innerHTML = state.isEvenDehla ? "<span class='text-success'>🟢 ON</span>" : "<span class='text-danger'>🔴 OFF</span>";
+              document.getElementById("menu-rule-limit").innerText = state.maxRounds ? state.maxRounds : "Unlimited";
+          }
           }
 
          // Clear glows
@@ -1020,6 +1067,7 @@
 }
       function toggleGameMenu() { const menu = document.getElementById("game-menu-modal"); menu.style.display = (menu.style.display === "none" || menu.style.display === "") ? "flex" : "none"; }
       function toggleScoreboard() { const screen = document.getElementById("scoreboard-screen"); document.getElementById("game-menu-modal").style.display = "none"; screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none"; }
+      function toggleRulesScreen() { const screen = document.getElementById("rules-screen"); document.getElementById("game-menu-modal").style.display = "none"; screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none";  }
       function joinRoom() { const name = document.getElementById("player-name").value.trim(); const code = document.getElementById("join-code").value.trim().toUpperCase(); if (!name || !code) { alert("Enter Name and Code!"); return; } ws.send(JSON.stringify({ action: "JOIN_ROOM", playerName: name, roomCode: code })); }
       function leaveRoom() { if (ws.readyState === WebSocket.OPEN) { ws.send(JSON.stringify({ action: "LEAVE_ROOM" })); } localStorage.removeItem("dehlaToken"); setTimeout(() => { location.reload(); }, 100); }
       function finishGame() { if(confirm("End game?")) ws.send(JSON.stringify({ action: "FINISH_GAME" })); }

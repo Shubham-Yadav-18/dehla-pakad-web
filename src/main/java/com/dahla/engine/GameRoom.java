@@ -349,4 +349,5 @@ public class GameRoom {
     public void setTeamWhoCalledKot(Team team) { this.teamWhoCalledKot = team; }
     public Team getTeamWhoCalledKot() { return teamWhoCalledKot; }
     public void setCurrentPhase(GamePhase phase) { this.currentPhase = phase; }
+    public RoomSettings getRules() { return rules; }
 }

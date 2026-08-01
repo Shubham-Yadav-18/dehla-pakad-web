@@ -1,0 +1,55 @@
+{
+  "__COMMENT__": "This file documents the exact JSON payloads used in the Dehla Pakad WebSocket engine.",
+
+  "CLIENT_TO_SERVER": {
+    "Description": "Sent from the browser to the Java server. Handled by PlayerAction.java",
+    "Payload_Structure": {
+      "action": "String (e.g., 'CREATE_ROOM', 'JOIN_ROOM', 'PLAY_CARD', 'CALL_BOWNI', 'PLAY_AGAIN', 'FINISH_GAME', 'LEAVE_ROOM', 'RECONNECT')",
+      "suit": "String (e.g., 'SPADES', 'HEARTS' - only used in PLAY_CARD)",
+      "rank": "String (e.g., 'TEN', 'ACE' - only used in PLAY_CARD)",
+      "playerName": "String (e.g., 'Rahul')",
+      "playerToken": "String (UUID for Reconnection)",
+      "roomCode": "String (4-digit code e.g., 'A7X2')",
+      "settings": {
+        "strictSweepEnabled": "boolean (Used for Even Dehla rule)",
+        "maxRounds": "Integer (null if unlimited)"
+      }
+    }
+  },
+
+  "SERVER_TO_CLIENT": {
+    "Description": "Sent from Java to the browser. Handled by GameStateUpdate.java",
+    "Payload_Structure": {
+      "roomCode": "String (e.g., 'A7X2')",
+      "myToken": "String (UUID to be saved in localStorage)",
+      "errorMessage": "String (null unless an error occurred)",
+      "errorType": "String (e.g., 'RULE_VIOLATION')",
+
+      "currentPhase": "String ('WAITING_FOR_PLAYERS', 'DISCOVERING_TRUMP', 'SECOND_DEAL', 'BOWNI_DECLARATION', 'MAIN_PLAY', 'ROUND_OVER', 'MATCH_OVER')",
+      "trumpSuit": "String (e.g., 'HEARTS' or 'NOT YET DISCOVERED')",
+      "myName": "String",
+      "currentTurnPlayerName": "String",
+      "isMyTurn": "boolean",
+      "isPaused": "boolean (True if trick is resolving or someone disconnected)",
+      "bowniTeam": "String ('TEAM_A', 'TEAM_B', or null)",
+
+      "seatingOrder": ["String (Array of 4 player names)"],
+      "playerTeams": { "PlayerName": "String ('TEAM_A' or 'TEAM_B')" },
+
+      "myHand": ["String (e.g., 'TEN of SPADES')"],
+      "currentTrickCards": ["String (Array of cards currently on table)"],
+      "trickPlayerNames": ["String (Array of names corresponding to currentTrickCards)"],
+      "accumulatedPileSize": "Integer (Count of cards currently hidden in the pile)",
+
+      "teamAScore": "Integer (Current round Dehlas)",
+      "teamBScore": "Integer (Current round Dehlas)",
+      "matchScoreA": "Integer (Total game points)",
+      "matchScoreB": "Integer (Total game points)",
+      "historyTeamA": ["Integer (Array of points earned per round)"],
+      "historyTeamB": ["Integer (Array of points earned per round)"],
+
+      "isEvenDehla": "boolean",
+      "maxRounds": "Integer (or null)"
+    }
+  }
+}

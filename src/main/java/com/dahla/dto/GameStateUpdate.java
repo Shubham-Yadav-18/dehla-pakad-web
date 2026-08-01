@@ -30,5 +30,9 @@ public class GameStateUpdate {
     public boolean isPaused;
     public String bowniTeam;
 
+    public boolean isEvenDehla;
+    public Integer maxRounds;
+    public java.util.Map<String, String> playerTeams;
+
     public GameStateUpdate() {}
 }
