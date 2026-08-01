@@ -202,35 +202,56 @@
                    5. GAME SCREEN: HUD & PLAYER PODS
                    ========================================= */
                 .hud-badge {
-                    background: rgba(0,0,0,0.6);
-                    border: 1px solid var(--glass-border);
+                    /* Matches the rich dark gradient of the player pods */
+                    background: linear-gradient(145deg, rgba(30, 41, 59, 0.8) 0%, rgba(0, 0, 0, 0.9) 100%);
+                    backdrop-filter: blur(8px);
+                    -webkit-backdrop-filter: blur(8px);
+
+                    /* Glossy inset edge and smooth pill shape */
+                    border: 1px solid rgba(255, 255, 255, 0.15);
+                    border-radius: 20px;
                     padding: 6px 14px;
-                    border-radius: 8px;
+
+                    /* Deep drop shadow + inner glass highlight */
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
                     font-weight: 600;
                     z-index: 50;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+                    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+                    transition: all 0.2s ease;
                 }
-                #trump-display { position: absolute; top: 15px; left: 15px; }
-                #menu-button { position: absolute; top: 15px; right: 15px; cursor: pointer; transition: 0.2s; }
-                #menu-button:hover { background: rgba(0,0,0,0.8); border-color: var(--accent-primary); }
+               #menu-button:hover {
+                    background: linear-gradient(145deg, rgba(45, 60, 85, 0.9) 0%, rgba(10, 10, 10, 0.9) 100%);
+                    box-shadow: 0 6px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                }
+                #menu-button:active {
+                    transform: scale(0.92); /* Satisfying physical press effect */
+                }
 
                 .player-pod {
-                    position: absolute;
-                    background: rgba(0, 0, 0, 0.7);
-                    backdrop-filter: blur(5px);
-                    -webkit-backdrop-filter: blur(5px);
-                    border: 1px solid var(--glass-border);
-                    padding: 6px 14px;
-                    border-radius: 20px;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    font-weight: 600;
-                    font-size: 0.9rem;
-                    transition: all 0.3s ease;
-                    white-space: nowrap;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-                }
+    position: absolute;
+    /* 🌟 NEW: Rich dark gradient instead of flat black */
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.85) 0%, rgba(0, 0, 0, 0.95) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+
+    /* 🌟 NEW: Subtle borders and a glossy top-edge highlight */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+    padding: 6px 14px;
+    border-radius: 30px; /* Perfectly round edges */
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Slightly more breathing room */
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-highlight);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    z-index: 10;
+}
 
                 /* 🌟 NAME TRUNCATION */
                 #bottom-pod-name, #top-pod-name, #left-pod-name, #right-pod-name {
@@ -247,16 +268,33 @@
                 .pod-right { top: 65%; right: 10px; }
                 .pod-bottom { bottom: 140px; left: 50%; transform: translateX(-50%); z-index: 5; }
 
-                .active-turn {
-                    border-color: #f1c40f;
-                    box-shadow: 0 0 15px rgba(241, 196, 15, 0.6);
-                    animation: pulse-pod 1.5s infinite alternate;
-                }
-                .turn-indicator { width: 10px; height: 10px; border-radius: 50%; background: #555; }
-                .active-turn .turn-indicator { background: #f1c40f; box-shadow: 0 0 8px #f1c40f; }
+                /* 🌟 NEW: Inactive LED state (sunken, dark) */
+.turn-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #222;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
+}
 
-                @keyframes pulse-pod { 0% { box-shadow: 0 0 10px rgba(241, 196, 15, 0.4); } 100% { box-shadow: 0 0 20px rgba(241, 196, 15, 0.8); } }
+/* 🌟 NEW: Active LED state (glowing, bright) */
+.active-turn .turn-indicator {
+    background: #f1c40f;
+    /* The inset white makes it look like a lit bulb, the outer glow creates the neon effect */
+    box-shadow: 0 0 12px #f1c40f, inset 0 2px 4px rgba(255,255,255,0.8);
+}
 
+/* 🌟 NEW: Elegant pod border pulse */
+.active-turn {
+    border-color: rgba(241, 196, 15, 0.8);
+    animation: pulse-pod-premium 1.5s infinite alternate;
+}
+
+@keyframes pulse-pod-premium {
+    0% { box-shadow: 0 0 10px rgba(241, 196, 15, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
+    100% { box-shadow: 0 0 25px rgba(241, 196, 15, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
+}
                 /* =========================================
                    6. GAME SCREEN: TABLE & CARDS
                    ========================================= */
@@ -315,6 +353,88 @@
                 .card-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.2rem; }
                 .card-bottom { position: absolute; bottom: 3px; right: 5px; text-align: center; transform: rotate(180deg); line-height: 1; font-size: 0.95rem; }
 
+/* 🌟 NEW: Premium Team Badges */
+.badge-team-a {
+    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 5px rgba(255, 65, 108, 0.4), inset 0 1px 2px rgba(255,255,255,0.4);
+    color: white;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+
+    /* 🌟 THE FIX: Perfect Circles */
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    padding: 0; /* Removed the pill padding */
+
+    /* Lock the shape and text direction */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Prevents Flexbox from squishing the circle */
+<!--    writing-mode: horizontal-tb; /* Forces the 'A' to stay upright even in side pods! */-->
+    line-height: 1;
+}
+
+.badge-team-b {
+    background: linear-gradient(135deg, #36D1DC 0%, #5B86E5 100%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 5px rgba(91, 134, 229, 0.4), inset 0 1px 2px rgba(255,255,255,0.4);
+    color: white;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+
+    /* 🌟 THE FIX: Perfect Circles */
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    padding: 0; /* Removed the pill padding */
+
+    /* Lock the shape and text direction */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Prevents Flexbox from squishing the circle */
+<!--    writing-mode: horizontal-tb; /* Forces the 'B' to stay upright even in side pods! */-->
+    line-height: 1;
+}
+
+/* 🌟 NEON BOWNI ANIMATIONS */
+.bowni-neon-a {
+    border: 1px solid rgba(255, 150, 150, 0.8) !important;
+    animation: neon-pulse-a 1.5s infinite alternate;
+}
+
+.bowni-neon-b {
+    border: 1px solid rgba(150, 200, 255, 0.8) !important;
+    animation: neon-pulse-b 1.5s infinite alternate;
+}
+
+/* Team A (Red/Pink Neon) */
+@keyframes neon-pulse-a {
+    0% {
+        box-shadow: 0 0 5px rgba(231, 76, 60, 0.4), inset 0 1px 2px rgba(255,255,255,0.2);
+    }
+    100% {
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.6), /* Bright core */
+                    0 0 15px rgba(231, 76, 60, 0.8),  /* Medium glow */
+                    0 0 25px rgba(231, 76, 60, 0.5),  /* Wide halo */
+                    inset 0 1px 4px rgba(255, 255, 255, 0.5); /* Inner reflection */
+    }
+}
+
+/* Team B (Blue Neon) */
+@keyframes neon-pulse-b {
+    0% {
+        box-shadow: 0 0 5px rgba(52, 152, 219, 0.4), inset 0 1px 2px rgba(255,255,255,0.2);
+    }
+    100% {
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.6), /* Bright core */
+                    0 0 15px rgba(52, 152, 219, 0.8), /* Medium glow */
+                    0 0 25px rgba(52, 152, 219, 0.5), /* Wide halo */
+                    inset 0 1px 4px rgba(255, 255, 255, 0.5); /* Inner reflection */
+    }
+}
+
                 /* =========================================
                    SMART ORIENTATION: MOBILE PORTRAIT
                    ========================================= */
@@ -329,7 +449,10 @@
                         top: 50%;
                         writing-mode: vertical-rl; /* Native vertical text */
                         padding: 14px 6px;
-                        flex-direction: column;
+
+                        /* 🌟 THE FIX: Remove flex-direction: column, explicitly center items */
+                        align-items: center;
+                        justify-content: center;
                     }
                     .pod-left {
                         transform: translateY(-50%) rotate(180deg); /* Flips text to face center */
@@ -593,19 +716,45 @@
 </div>
 
 <div id="game-screen">
-    <div id="bowni-badge" class="hud-badge text-white" style="position: absolute; top: 50px; left: 10px; display: none;"></div>
+
+        <!-- 🌟 NEW: Unified Header Bar (Trump, Bowni, Menu) -->
+        <div class="position-absolute top-0 start-0 w-100 d-flex justify-content-between align-items-start p-2 p-md-3" style="z-index: 50; pointer-events: none;">
+
+            <!-- Left Group: Trump & Bowni -->
+            <div class="d-flex align-items-center gap-2" style="pointer-events: auto;">
+                <div id="trump-display" class="hud-badge text-white m-0" style="position: relative; top: 0; left: 0;">
+                    T: <span id="trump" class="text-danger">NONE</span>
+                </div>
+                <!-- Handled dynamically by JS -->
+                <div id="bowni-badge" class="hud-badge text-white m-0" style="position: relative; top: 0; left: 0; display: none;"></div>
+            </div>
+
+            <!-- Right Group: Menu Button -->
+            <div style="pointer-events: auto;">
+                <div id="menu-button" class="hud-badge text-white m-0" style="position: relative; top: 0; right: 0; cursor: pointer; transition: 0.2s;" onclick="toggleGameMenu()">
+                    ⚙️
+                </div>
+            </div>
+        </div>
+
+        <!-- (Keep your bowni-container and pods below this exactly as they are) -->
     <div id="bowni-container" class="position-absolute top-50 start-50 translate-middle text-center" style="display: none; z-index: 100;">
         <button class="btn btn-danger btn-lg shadow-lg" style="animation: pulse-pod 1s infinite alternate;" onclick="callBowni()">🔥 CALL BOWNI</button>
         <p class="text-white mt-2 fw-bold bg-dark p-1 rounded">10 Seconds to Declare...</p>
     </div>
-    <div id="trump-display" class="hud-badge text-white">Trump: <span id="trump" class="text-danger">NONE</span></div>
-    <div id="menu-button" class="hud-badge text-white" onclick="toggleGameMenu()">⚙️ Menu</div>
 
-    <div id="pod-me" class="player-pod pod-bottom"><div class="turn-indicator"></div> <span id="bottom-pod-name">Me</span></div>
-    <div id="pod-right" class="player-pod pod-right"><div class="turn-indicator"></div> <span id="right-pod-name">Waiting...</span></div>
-    <div id="pod-top" class="player-pod pod-top"><div class="turn-indicator"></div> <span id="top-pod-name">Waiting...</span></div>
-    <div id="pod-left" class="player-pod pod-left"><span id="left-pod-name">Waiting...</span> <div class="turn-indicator"></div></div>
-
+    <div id="pod-me" class="player-pod pod-bottom">
+        <span id="badge-me"></span> <span id="bottom-pod-name">Me</span> <div class="turn-indicator"></div>
+    </div>
+    <div id="pod-right" class="player-pod pod-right">
+        <span id="badge-right"></span> <span id="right-pod-name">Waiting...</span> <div class="turn-indicator"></div>
+    </div>
+    <div id="pod-top" class="player-pod pod-top">
+        <span id="badge-top"></span> <span id="top-pod-name">Waiting...</span> <div class="turn-indicator"></div>
+    </div>
+    <div id="pod-left" class="player-pod pod-left">
+        <span id="badge-left"></span> <span id="left-pod-name">Waiting...</span> <div class="turn-indicator"></div>
+    </div>
     <div class="table-center">
         <div id="table-cards" class="position-absolute w-100 h-100 d-flex justify-content-center align-items-center"></div>
         <div id="pile-counter" class="position-absolute text-warning fw-bold fs-6" style="bottom: -25px; left: 50%; transform: translateX(-50%); white-space: nowrap;">Pile: 0</div>
@@ -787,18 +936,25 @@
               topPlayer = state.seatingOrder[(myIndex + 2) % state.seatingOrder.length] || "Waiting...";
               leftPlayer = state.seatingOrder[(myIndex + 3) % state.seatingOrder.length] || "Waiting...";
 
-              // 🌟 NEW: Helper to generate Team Badges
+              // 🌟 NEW: Helper to generate Team Badges (Now without extra margin classes)
               const getBadge = (pName) => {
                   if (!state.playerTeams || pName === "Waiting...") return "";
                   const team = state.playerTeams[pName];
-                  return team === 'TEAM_A' ? `<span class="badge bg-danger ms-2" style="font-size: 0.7rem;">A</span>` : `<span class="badge bg-primary ms-2" style="font-size: 0.7rem;">B</span>`;
+                  // Notice we removed 'ms-2' so Flexbox can handle the spacing naturally
+                  return team === 'TEAM_A' ? `<span class="badge-team-a" style="font-size: 0.75rem;">A</span>` : `<span class="badge-team-b" style="font-size: 0.75rem;">B</span>`;
               };
 
-              // 🌟 UPDATE: Use innerHTML to inject the badge alongside the name
-              document.getElementById("bottom-pod-name").innerHTML = getBadge(state.myName) + state.myName + " (You)";
-              document.getElementById("right-pod-name").innerHTML = getBadge(rightPlayer) + rightPlayer;
-              document.getElementById("top-pod-name").innerHTML = getBadge(topPlayer) + topPlayer;
-              document.getElementById("left-pod-name").innerHTML = getBadge(leftPlayer) + leftPlayer;
+              // 1. Inject the Badges into their new dedicated slots
+              document.getElementById("badge-me").innerHTML = getBadge(state.myName);
+              document.getElementById("badge-right").innerHTML = getBadge(rightPlayer);
+              document.getElementById("badge-top").innerHTML = getBadge(topPlayer);
+              document.getElementById("badge-left").innerHTML = getBadge(leftPlayer);
+
+              // 2. Inject the Names cleanly
+              document.getElementById("bottom-pod-name").innerText = state.myName + " (You)";
+              document.getElementById("right-pod-name").innerText = rightPlayer;
+              document.getElementById("top-pod-name").innerText = topPlayer;
+              document.getElementById("left-pod-name").innerText = leftPlayer;
           }
 
           // 🌟 NEW: Update the Immutable Menu Rules
@@ -895,8 +1051,8 @@
           if (state.bowniTeam) {
               badge.style.display = "block";
               badge.innerText = `🔥 ${state.bowniTeam === 'TEAM_A' ? 'Team A' : 'Team B'} : Bowni!`;
-              badge.style.border = `2px solid ${state.bowniTeam === 'TEAM_A' ? '#e74c3c' : '#3498db'}`;
-
+                // 🌟 NEW: Apply the animated CSS class instead of inline styles
+                badge.className = "hud-badge text-white m-0 " + (state.bowniTeam === 'TEAM_A' ? 'bowni-neon-a' : 'bowni-neon-b');
               // 🌟 PLAY CALL SOUND (Only once per round)
               if (!hasPlayedBowniCallThisRound && state.currentPhase === "MAIN_PLAY") {
                   playSound("sfx-bowni-call");
