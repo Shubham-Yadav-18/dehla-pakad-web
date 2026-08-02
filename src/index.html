@@ -330,28 +330,29 @@
 
                 .playing-card {
                     width: 16vw; max-width: 75px;
-                    height: 24vw; max-height: 110px;
-                    background-color: white;
+                    height: 22.4vw; max-height: 105px;
+                    margin-left: max(-5.5vw, -35px);
+                   flex-shrink: 0;
+                    /* 🌟 NEW: SVG Background properties */
+                   background-color: transparent;
+                    background-size: 100% 100%;
+                    background-position: bottom center; /* Anchors the cards evenly */
+                    background-repeat: no-repeat;
+
                     border-radius: 6px;
+                    overflow: hidden;
                     box-shadow: -2px 4px 10px rgba(0,0,0,0.6);
                     position: relative;
                     cursor: pointer;
                     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                    margin-left: max(-5.5vw, -35px); /* 🌟 ADDED max() function */
-                    font-weight: 700;
-                    color: black;
                 }
                 .playing-card:first-child { margin-left: 0; }
                 .playing-card:hover { transform: translateY(-20px); z-index: 100 !important; }
 
-                .card-red { color: #e74c3c; }
-                .card-black { color: #1e293b; }
-                .card-disabled { cursor: not-allowed; opacity: 0.85; filter: grayscale(30%); }
+
+                .card-disabled { cursor: not-allowed; filter: brightness(75%) grayscale(30%); }
                 .card-disabled:hover { transform: translateY(-5px); }
 
-                .card-top { position: absolute; top: 3px; left: 5px; text-align: center; line-height: 1; font-size: 0.95rem; }
-                .card-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 2.2rem; }
-                .card-bottom { position: absolute; bottom: 3px; right: 5px; text-align: center; transform: rotate(180deg); line-height: 1; font-size: 0.95rem; }
 
 /* 🌟 NEW: Premium Team Badges */
 .badge-team-a {
@@ -463,7 +464,7 @@
 
                     /* 3. Tighter Card Spread for 13 cards in narrow width */
                     .playing-card {
-                        margin-left: max(-8vw, -35px); /* 🌟 ADDED max() function */
+                        margin-left: max(-9vw, -35px); /* 🌟 ADDED max() function */
                     }
                 }
 
@@ -545,8 +546,7 @@
                     .pod-bottom { bottom: 130px; }
                     .pod-left { top: 45%; left: 20px; }
                     .pod-right { top: 45%; right: 20px; }
-                    .card-top, .card-bottom { font-size: 1.1rem; }
-                    .card-center { font-size: 2.5rem; }
+
                 }
     </style>
 </head>
@@ -828,28 +828,31 @@
       ws.onclose = () => { alert("Connection lost. Please refresh."); };
 
       // --- CARD TRANSLATOR MAGIC ---
-      function formatCardInfo(cardStr) {
+// --- NEW SVG CARD MAGIC ---
+      function getSVGFilename(cardStr) {
           const parts = cardStr.split(" of ");
-          const rankMap = { 'ACE': 'A', 'KING': 'K', 'QUEEN': 'Q', 'JACK': 'J', 'TEN': '10', 'NINE': '9', 'EIGHT': '8', 'SEVEN': '7', 'SIX': '6', 'FIVE': '5', 'FOUR': '4', 'THREE': '3', 'TWO': '2' };
-          const displayRank = rankMap[parts[0]] || parts[0];
-          const suit = parts[1];
-          let symbol = '', colorClass = '';
-          if (suit === 'HEARTS') { symbol = '♥️'; colorClass = 'card-red'; }
-          else if (suit === 'DIAMONDS') { symbol = '♦️'; colorClass = 'card-red'; }
-          else if (suit === 'CLUBS') { symbol = '♣️'; colorClass = 'card-black'; }
-          else if (suit === 'SPADES') { symbol = '♠️'; colorClass = 'card-black'; }
-          return { displayRank, symbol, colorClass };
+          const rank = parts[0];
+          const suit = parts[1].toLowerCase(); // e.g., "hearts"
+
+          const rankMap = {
+              'ACE': 'ace', 'KING': 'king', 'QUEEN': 'queen', 'JACK': 'jack',
+              'TEN': '10', 'NINE': '9', 'EIGHT': '8', 'SEVEN': '7',
+              'SIX': '6', 'FIVE': '5', 'FOUR': '4', 'THREE': '3', 'TWO': '2'
+          };
+          const mappedRank = rankMap[rank] || rank.toLowerCase();
+
+          return `${mappedRank}_of_${suit}.svg`;
       }
 
       function createCardHTML(cardStr, isClickable, isCenter = false) {
-          const card = formatCardInfo(cardStr);
+          const fileName = getSVGFilename(cardStr);
           const clickEvent = isClickable ? `onclick="playCard('${cardStr}')"` : "";
           const disableClass = (!isClickable && !isCenter) ? "card-disabled" : "";
+
+          // 🌟 UPDATED PATH: Points to resources/cards/
           return `
-              <div class="playing-card ${card.colorClass} ${disableClass}" ${clickEvent}>
-                  <div class="card-top">${card.displayRank}<br><small>${card.symbol}</small></div>
-                  <div class="card-center">${card.symbol}</div>
-                  <div class="card-bottom">${card.displayRank}<br><small>${card.symbol}</small></div>
+              <div class="playing-card ${disableClass}" ${clickEvent}
+                   style="background-image: url('main/resources/cards/${fileName}');">
               </div>`;
       }
       // --- SILENT HAND SORTING LOGIC ---
@@ -978,7 +981,7 @@
           } else {
               if (state.isMyTurn) {
                   document.getElementById("pod-me").classList.add("active-turn");
-                  document.getElementById("my-turn-glow").style.boxShadow = "0 0 30px rgba(241, 196, 15, 0.5) inset";
+                 // document.getElementById("my-turn-glow").style.boxShadow = "0 0 30px rgba(241, 196, 15, 0.5) inset";
                   document.getElementById("bottom-pod-name").innerText = state.myName + " (Your Turn!)";
               } else if (state.currentTurnPlayerName === rightPlayer) { document.getElementById("pod-right").classList.add("active-turn");
               } else if (state.currentTurnPlayerName === topPlayer) { document.getElementById("pod-top").classList.add("active-turn");
