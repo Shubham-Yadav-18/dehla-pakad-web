@@ -1224,6 +1224,22 @@
         }
     }));
 }
+      // --- SVG CARD PRELOADER ---
+// This forces the browser to download all cards in the background immediately
+function preloadCardImages() {
+    const suits = ['hearts', 'diamonds', 'clubs', 'spades'];
+    const ranks = ['ace', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'jack', 'queen', 'king'];
+
+    suits.forEach(suit => {
+        ranks.forEach(rank => {
+            const img = new Image();
+            img.src = `./resources/cards/${rank}_of_${suit}.svg`;
+        });
+    });
+}
+
+      // Start downloading the second the file loads
+      preloadCardImages();
       function toggleGameMenu() { const menu = document.getElementById("game-menu-modal"); menu.style.display = (menu.style.display === "none" || menu.style.display === "") ? "flex" : "none"; }
       function toggleScoreboard() { const screen = document.getElementById("scoreboard-screen"); document.getElementById("game-menu-modal").style.display = "none"; screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none"; }
       function toggleRulesScreen() { const screen = document.getElementById("rules-screen"); document.getElementById("game-menu-modal").style.display = "none"; screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none";  }
