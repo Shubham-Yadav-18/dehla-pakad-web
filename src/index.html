@@ -990,7 +990,7 @@
 
           //Card snap and dehla capture sound logic starts here
           // 1. CARD SNAP TRIGGER
-          console.log("Current Trick Data:", state.currentTrickCards);
+
           const currentTableCardCount = state.currentTrickCards ? state.currentTrickCards.length : 0;
           if (currentTableCardCount > prevTableCardCount) {
               playSound("sfx-card-snap", true);
@@ -1233,7 +1233,7 @@ function preloadCardImages() {
     suits.forEach(suit => {
         ranks.forEach(rank => {
             const img = new Image();
-            img.src = `./resources/cards/${rank}_of_${suit}.svg`;
+            img.src = `main/resources/cards/${rank}_of_${suit}.svg`;
         });
     });
 }
