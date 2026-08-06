@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>About Us - Dehla Pakad</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 1. VIP MIDNIGHT BACKGROUND & STRICT AXIS LOCK */
+        html, body {
+            overflow-x: hidden;
+            width: 100%;
+            background: linear-gradient(135deg, #0f172a 0%, #000000 100%);
+            color: #e2e8f0;
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 2. ELEGANT SAPPHIRE SCROLLBAR */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #000000; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #60a5fa; }
+
+        /* 3. LAYOUT */
+        .policy-container {
+            max-width: 850px;
+            width: 100%;
+            margin: 40px auto;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        /* 4. FROSTED GLASS CARDS */
+        .policy-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+            transition: all 0.4s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+
+        .policy-card:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        /* 5. TYPOGRAPHY & JUSTIFICATION */
+        .page-title {
+            color: #ffffff;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .section-title {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::before {
+            content: "";
+            display: inline-block;
+            width: 4px;
+            height: 20px;
+            background: #3b82f6;
+            margin-right: 12px;
+            border-radius: 2px;
+        }
+
+        .policy-card p, .policy-card li {
+            font-weight: 300;
+            line-height: 1.8;
+            font-size: 1.05rem;
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+
+        /* 6. PREMIUM SAPPHIRE BUTTONS */
+        .btn-lobby {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: #ffffff;
+            font-weight: 600;
+            border: none;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .btn-lobby:hover {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            transform: translateY(-2px);
+            color: #ffffff;
+        }
+
+        .highlight-text {
+            color: #60a5fa;
+            font-weight: 600;
+        }
+
+        /* 7. RESPONSIVE MOBILE TWEAKS */
+        @media (max-width: 576px) {
+            .policy-container { margin: 20px auto; padding: 0 15px; }
+            .policy-card { padding: 20px; }
+            .page-title { font-size: 1.6rem; }
+            .btn-lobby { padding: 6px 16px !important; font-size: 0.9rem; }
+            .policy-card p, .policy-card li { font-size: 0.95rem; }
+        }
+
+        /* 🌟 GLOBAL FOOTER STYLING */
+        .app-footer {
+            margin-top: auto; /* Pushes it to the bottom of the flex container */
+            padding: 20px 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+
+        .footer-link {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-link:hover {
+            color: #3b82f6; /* Sapphire glow on hover */
+        }
+
+        .footer-copyright {
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+
+<div class="policy-container">
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <h1 class="page-title m-0">About Us</h1>
+        <a href="index.html" class="btn btn-lobby px-4 py-2">⬅ Back</a>
+    </div>
+
+    <div class="policy-card">
+        <h4 class="section-title">A Cultural Legacy</h4>
+        <p>Dehla Pakad (Hindi for "Catch the Tens") is more than just a card game; it is a beloved piece of cultural heritage. For generations, it has been the centerpiece of family gatherings, festivals, and late-night strategy sessions across South Asia. Our mission is to preserve the authentic spirit of this classic game while bringing it into the modern digital era.</p>
+    </div>
+
+    <div class="policy-card">
+        <h4 class="section-title">The Digital Experience</h4>
+        <p>We built this platform by combining deep respect for traditional rules with cutting-edge <span class="highlight-text">Real-Time WebSocket Technology</span>. Instead of playing against predictable AI, our architecture is engineered exclusively for genuine, 4-player multiplayer experiences. Whether you are across the room or across the globe, our servers ensure that every card thrown, every "Kot" called, and every sudden-death "Bowni" phase happens instantly, with zero lag.</p>
+    </div>
+
+    <div class="policy-card">
+        <h4 class="section-title">Commitment to Fair Play</h4>
+        <p>Trust and competitive integrity are the foundations of our platform. We have engineered a strict server-authoritative logic system that mathematically validates every single move. Our environment is entirely free of bots, manipulated RNG, or pay-to-win mechanics. We provide the table; pure strategy and teamwork determine the winner.</p>
+        <p class="mb-0">Because we value your privacy, our game operates on a highly secure, transient-memory architecture. Game states exist only while the match is active and are permanently dissolved the moment the room closes, ensuring your session remains entirely yours.</p>
+    </div>
+
+    <div class="text-center mt-4 mb-5">
+        <a href="index.html" class="btn btn-lobby px-5 py-3 fs-5">🃏 Join the Table</a>
+    </div>
+
+</div>
+
+<footer class="app-footer">
+    <div class="footer-links">
+        <a href="about.html" class="footer-link">About Us</a>
+        <a href="rules.html" class="footer-link">How to Play</a>
+        <a href="terms.html" class="footer-link">Terms & Conditions</a>
+        <a href="privacy.html" class="footer-link">Privacy Policy</a>
+    </div>
+    <div class="footer-copyright">
+        &copy; 2026 Dehla Pakad. All rights reserved.
+    </div>
+</footer>
+
+</body>
+</html>

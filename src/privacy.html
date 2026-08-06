@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Privacy Policy - Dehla Pakad</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* 1. VIP MIDNIGHT BACKGROUND & STRICT AXIS LOCK */
+        html, body {
+            overflow-x: hidden; /* 🌟 FIX: Strictly kills the horizontal scrollbar */
+            width: 100%;
+            background: linear-gradient(135deg, #0f172a 0%, #000000 100%);
+            color: #e2e8f0;
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 2. ELEGANT SAPPHIRE SCROLLBAR */
+        ::-webkit-scrollbar { width: 6px; } /* Slightly thinner for mobile */
+        ::-webkit-scrollbar-track { background: #000000; }
+        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #60a5fa; }
+
+        /* 3. LAYOUT */
+        .policy-container {
+            max-width: 850px;
+            width: 100%;
+            margin: 40px auto;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        /* 4. FROSTED GLASS CARDS */
+        .policy-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+            transition: all 0.4s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+
+            /* 🌟 FIX: Forces long URLs and emails to break instead of stretching the screen */
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            word-break: break-word;
+        }
+        .policy-card:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        /* 5. TYPOGRAPHY & JUSTIFICATION */
+        .page-title {
+            color: #ffffff;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .section-title {
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::before {
+            content: "";
+            display: inline-block;
+            width: 4px;
+            height: 20px;
+            background: #3b82f6;
+            margin-right: 12px;
+            border-radius: 2px;
+        }
+
+        .policy-card p, .policy-card li {
+            font-weight: 300;
+            line-height: 1.8;
+            font-size: 1.05rem;
+            text-align: justify;
+            margin-bottom: 15px;
+        }
+
+        .policy-card ul { padding-left: 20px; }
+        .policy-card li { margin-bottom: 10px; }
+
+        .last-updated {
+            color: #888888;
+            font-size: 0.9rem;
+            text-align: right;
+            margin-bottom: 25px;
+            font-weight: 300;
+        }
+
+        /* 6. PREMIUM SAPPHIRE BUTTONS */
+        .btn-lobby {
+            background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+            color: #ffffff;
+            font-weight: 600;
+            border: none;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            transition: all 0.3s ease;
+            white-space: nowrap; /* Keeps the button text on one line */
+        }
+
+        .btn-lobby:hover {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            transform: translateY(-2px);
+            color: #ffffff;
+        }
+
+        .highlight-link { color: #60a5fa; text-decoration: none; transition: color 0.2s; }
+        .highlight-link:hover { color: #93c5fd; text-decoration: underline; }
+
+        /* 🌟 FIX 7. RESPONSIVE MOBILE TWEAKS (For Galaxy S8 & smaller) */
+        @media (max-width: 576px) {
+            .policy-container {
+                margin: 20px auto;
+                padding: 0 15px;
+            }
+            .policy-card {
+                padding: 20px; /* Less padding to give text more room */
+            }
+            .page-title {
+                font-size: 1.6rem; /* Shrinks title slightly */
+            }
+            .btn-lobby {
+                padding: 6px 16px !important;
+                font-size: 0.9rem;
+            }
+            .policy-card p, .policy-card li {
+                font-size: 0.95rem; /* Better reading size for phones */
+            }
+        }
+/* 🌟 GLOBAL FOOTER STYLING */
+        .app-footer {
+            margin-top: auto; /* Pushes it to the bottom of the flex container */
+            padding: 20px 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+
+        .footer-link {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-link:hover {
+            color: #3b82f6; /* Sapphire glow on hover */
+        }
+
+        .footer-copyright {
+            color: #64748b;
+        }
+    </style>
+
+
+</head>
+<body>
+
+<div class="policy-container">
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+        <h1 class="page-title m-0">Privacy Policy</h1>
+        <a href="index.html" class="btn btn-lobby px-4 py-2">⬅ Back</a>
+    </div>
+
+    <div class="last-updated">Last Updated: June 2026</div>
+
+    <div class="policy-card">
+        <h4 class="section-title">Welcome to Dehla Pakad</h4>
+        <p>Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information when you play Dehla Pakad on our website or mobile application. By playing the game, you agree to the collection and use of information in accordance with this policy.</p>
+    </div>
+
+    <div class="policy-card">
+        <h4 class="section-title">Information We Collect</h4>
+        <p>To provide a seamless multiplayer experience, we collect minimal data:</p>
+        <ul class="mb-0">
+            <li><strong>Local Tokens:</strong> We store a secure, anonymous text token in your device's local storage to allow you to reconnect if your internet drops. We do not store real names, passwords, or emails.</li>
+            <li><strong>Display Names:</strong> The nickname you enter is temporarily kept in the server's memory while the room is active and is deleted when the game ends.</li>
+            <li><strong>Usage Data:</strong> We automatically collect standard technical data (like IP addresses and browser types) to ensure server stability and prevent abuse.</li>
+        </ul>
+    </div>
+
+    <div class="policy-card">
+        <h4 class="section-title">Advertising & Cookies</h4>
+        <p>We use third-party advertising companies, including Google AdSense, to serve ads when you visit our platform.</p>
+        <ul class="mb-0">
+            <li>Google's use of advertising cookies enables it and its partners to serve ads based on your prior visits to this or other websites.</li>
+            <li>You may opt out of personalized advertising by visiting <a href="https://myadcenter.google.com/" target="_blank" class="highlight-link">Google Ads Settings</a> at any time.</li>
+        </ul>
+    </div>
+
+    <div class="policy-card">
+        <h4 class="section-title">Data Storage and Security</h4>
+        <p class="mb-0">Our game architecture is designed to be highly secure and transient. All game room data, chat events, and scores are held strictly in temporary server RAM. Once a room is dissolved, all live game data is permanently wiped from our systems. We do not maintain persistent databases of your gameplay history.</p>
+    </div>
+
+    <div class="policy-card">
+        <h4 class="section-title">Contact Us</h4>
+        <p class="mb-0">If you have any questions or suggestions about our Privacy Policy, please reach out to us at <a href="mailto:support@yourdomain.com" class="highlight-link">support@yourdomain.com</a>.</p>
+    </div>
+
+    <div class="text-center mt-4 mb-5">
+        <a href="index.html" class="btn btn-lobby px-5 py-3 fs-5">🃏 Play Dehla Pakad</a>
+    </div>
+
+</div>
+
+<footer class="app-footer">
+    <div class="footer-links">
+        <a href="about.html" class="footer-link">About Us</a>
+        <a href="rules.html" class="footer-link">How to Play</a>
+        <a href="terms.html" class="footer-link">Terms & Conditions</a>
+        <a href="privacy.html" class="footer-link">Privacy Policy</a>
+    </div>
+    <div class="footer-copyright">
+        &copy; 2026 Dehla Pakad. All rights reserved.
+    </div>
+</footer>
+
+</body>
+</html>

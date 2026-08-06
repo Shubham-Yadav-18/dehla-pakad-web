@@ -328,30 +328,91 @@
                     z-index: 10;
                 }
 
+                /* --- PREMIUM CARD PHYSICS & LIGHTING --- */
+                /* --- PREMIUM CARD PHYSICS & LIGHTING --- */
                 .playing-card {
+                    /* Layout & Sizing (Preserved) */
                     width: 16vw; max-width: 75px;
                     height: 22.4vw; max-height: 105px;
                     margin-left: max(-5.5vw, -35px);
-                   flex-shrink: 0;
-                    /* 🌟 NEW: SVG Background properties */
-                   background-color: transparent;
-                    background-size: 100% 100%;
-                    background-position: bottom center; /* Anchors the cards evenly */
+                    flex-shrink: 0;
+
+                    background-color: transparent;
+                    background-size: 107% 107%;
+                    background-position: center center;
                     background-repeat: no-repeat;
 
-                    border-radius: 6px;
+                    /* 🌟 UPGRADE 1: The physical card edge */
+                   border-radius: 4px;
+                    border: 1px solid rgba(255, 255, 255, 0.4); /* Softened the outer rim light */
                     overflow: hidden;
-                    box-shadow: -2px 4px 10px rgba(0,0,0,0.6);
+
                     position: relative;
                     cursor: pointer;
-                    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+                    /* 🌟 UPGRADE 2: The Inner Bevel & Outer Shadows */
+                    box-shadow:
+                        inset 0 0 0 1px rgba(0, 0, 0, 0.05), /* Subtle inner bevel */
+                        -2px 4px 6px rgba(0, 0, 0, 0.4),
+                        -6px 12px 16px rgba(0, 0, 0, 0.3);
+
+                    /* 🌟 UPGRADE 3: Razor-sharp edges during hover animations */
+                    backface-visibility: hidden;
+                    transform: translateZ(0);
+                    -webkit-font-smoothing: subpixel-antialiased;
+
+                    transform-origin: bottom center;
+                    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
                 }
+
                 .playing-card:first-child { margin-left: 0; }
-                .playing-card:hover { transform: translateY(-20px); z-index: 100 !important; }
 
+                /* 3. Enhanced Hover Physics */
+                .playing-card:hover {
+                    transform: translateY(-20px) scale(1.05); /* Lifts UP and expands slightly */
+                    z-index: 100 !important;
+                    box-shadow:
+                        inset 0 0 0 1px rgba(255, 255, 255, 0.6), /* Edge catches more light */
+                        -4px 10px 15px rgba(0, 0, 0, 0.4),        /* Deeper shadow from lift */
+                        -12px 20px 30px rgba(0, 0, 0, 0.5);       /* Wide hovering shadow */
+                }
 
-                .card-disabled { cursor: not-allowed; filter: brightness(75%) grayscale(30%); }
-                .card-disabled:hover { transform: translateY(-5px); }
+                /* 4. Dynamic Lighting / Card Sheen */
+                .playing-card::after {
+                    content: '';
+                    position: absolute;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    border-radius: 6px;
+                    pointer-events: none; /* Let clicks pass through to the card */
+                    background: linear-gradient(
+                        115deg,
+                        rgba(255,255,255,0.4) 0%,    /* Bright corner glare */
+                        rgba(255,255,255,0.05) 25%,
+                        transparent 40%,
+                        transparent 100%
+                    );
+                    opacity: 0.8;
+                    transition: opacity 0.3s ease;
+                }
+
+                /* 5. Refined Disabled State */
+                .card-disabled {
+                    cursor: not-allowed;
+                    transform: scale(0.98); /* Sinks down slightly into the table */
+                    filter: brightness(60%) contrast(1.1) grayscale(40%);
+                    box-shadow:
+                        inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+                        -1px 2px 4px rgba(0, 0, 0, 0.8);
+                }
+                .card-disabled::after {
+                    opacity: 0.1; /* Dim the sheen on disabled cards */
+                }
+                .card-disabled:hover {
+                    transform: translateY(-2px) scale(0.98); /* Barely twitches on hover */
+                    box-shadow:
+                        inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+                        -2px 4px 8px rgba(0, 0, 0, 0.7);
+                }
 
 
 /* 🌟 NEW: Premium Team Badges */
@@ -543,7 +604,7 @@
                     .table-center { width: 350px; height: 350px; top: 45%; }
                     .playing-card { width: 85px; max-width: none; height: 125px; max-height: none; margin-left: -25px; }
                     .my-hand-container { width: auto; max-width: 800px; }
-                    .pod-bottom { bottom: 130px; }
+                    .pod-bottom { bottom: 145px; }
                     .pod-left { top: 45%; left: 20px; }
                     .pod-right { top: 45%; right: 20px; }
 
@@ -717,27 +778,27 @@
 
 <div id="game-screen">
 
-        <!-- 🌟 NEW: Unified Header Bar (Trump, Bowni, Menu) -->
-        <div class="position-absolute top-0 start-0 w-100 d-flex justify-content-between align-items-start p-2 p-md-3" style="z-index: 50; pointer-events: none;">
+    <!-- 🌟 NEW: Unified Header Bar (Trump, Bowni, Menu) -->
+    <div class="position-absolute top-0 start-0 w-100 d-flex justify-content-between align-items-start p-2 p-md-3" style="z-index: 50; pointer-events: none;">
 
-            <!-- Left Group: Trump & Bowni -->
-            <div class="d-flex align-items-center gap-2" style="pointer-events: auto;">
-                <div id="trump-display" class="hud-badge text-white m-0" style="position: relative; top: 0; left: 0;">
-                    T: <span id="trump" class="text-danger">NONE</span>
-                </div>
-                <!-- Handled dynamically by JS -->
-                <div id="bowni-badge" class="hud-badge text-white m-0" style="position: relative; top: 0; left: 0; display: none;"></div>
+        <!-- Left Group: Trump & Bowni -->
+        <div class="d-flex align-items-center gap-2" style="pointer-events: auto;">
+            <div id="trump-display" class="hud-badge text-white m-0" style="position: relative; top: 0; left: 0;">
+                T: <span id="trump" class="text-danger">NONE</span>
             </div>
-
-            <!-- Right Group: Menu Button -->
-            <div style="pointer-events: auto;">
-                <div id="menu-button" class="hud-badge text-white m-0" style="position: relative; top: 0; right: 0; cursor: pointer; transition: 0.2s;" onclick="toggleGameMenu()">
-                    ⚙️
-                </div>
-            </div>
+            <!-- Handled dynamically by JS -->
+            <div id="bowni-badge" class="hud-badge text-white m-0" style="position: relative; top: 0; left: 0; display: none;"></div>
         </div>
 
-        <!-- (Keep your bowni-container and pods below this exactly as they are) -->
+        <!-- Right Group: Menu Button -->
+        <div style="pointer-events: auto;">
+            <div id="menu-button" class="hud-badge text-white m-0" style="position: relative; top: 0; right: 0; cursor: pointer; transition: 0.2s;" onclick="toggleGameMenu()">
+                ⚙️
+            </div>
+        </div>
+    </div>
+
+    <!-- (Keep your bowni-container and pods below this exactly as they are) -->
     <div id="bowni-container" class="position-absolute top-50 start-50 translate-middle text-center" style="display: none; z-index: 100;">
         <button class="btn btn-danger btn-lg shadow-lg" style="animation: pulse-pod 1s infinite alternate;" onclick="callBowni()">🔥 CALL BOWNI</button>
         <p class="text-white mt-2 fw-bold bg-dark p-1 rounded">10 Seconds to Declare...</p>
