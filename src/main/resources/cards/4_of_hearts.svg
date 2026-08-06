@@ -14,8 +14,8 @@
     <g id="corner">
       <!-- Using Arial to match your original file's text spec -->
 <!-- Notice the fill="#df0000" -->
-      <text x="35" y="60" font-family="Arial, sans-serif" font-weight="bold" font-size="52" fill="#df0000" text-anchor="middle">4</text>      <!-- Small suit placed perfectly under the number -->
-      <use href="#suit" x="15" y="65" width="40" height="40" />
+        <text x="55" y="72" font-family="Arial, sans-serif" font-weight="bold" font-size="85" fill="#df0000" text-anchor="middle">4</text>      <!-- Small suit placed perfectly under the number -->
+        <use href="#suit" x="13" y="78" width="85" height="85" />
     </g>
   </defs>
 
@@ -29,5 +29,5 @@
   <use href="#corner" transform="rotate(180, 150, 210)" />
 
   <!-- 6. THE BIG CENTER SUIT -->
-  <use href="#suit" x="85" y="145" width="130" height="130" />
+    <use href="#suit" x="65" y="140" width="170" height="170" />
 </svg>

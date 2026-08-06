@@ -9,7 +9,7 @@
 
     <!-- 2. THE CORNER TEMPLATE -->
     <g id="corner">
-      <text x="33" y="60" font-family="Arial, sans-serif" font-weight="bold" font-size="52" fill="#000000" text-anchor="middle">J</text>
+      <text x="28" y="47" font-family="Arial, sans-serif" font-weight="bold" font-size="55" fill="#000000" text-anchor="middle">J</text>
       <use href="#suit" x="12" y="60" width="40" height="40" />
     </g>
 
