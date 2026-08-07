@@ -1,0 +1,603 @@
+
+        /* --- HIDE SCROLLBARS FOR LOBBY, MENU, SCOREBOARD & VICTORY --- */
+      /* Hide scrollbar for Chrome, Safari and Opera */
+      #lobby-screen::-webkit-scrollbar,
+      #game-menu-modal::-webkit-scrollbar,
+      #scoreboard-screen::-webkit-scrollbar,
+      #victory-screen::-webkit-scrollbar,
+      .hide-inner-scroll::-webkit-scrollbar {
+          display: none;
+      }
+
+      /* Hide scrollbar for IE, Edge and Firefox */
+      #lobby-screen,
+      #game-menu-modal,
+      #scoreboard-screen,
+      #victory-screen,
+      .hide-inner-scroll {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+                    /* 1. CORE THEME VARIABLES */
+                    :root {
+                        --bg-gradient-start: #0f172a;
+                        --bg-gradient-end: #000000;
+                        --glass-bg: rgba(255, 255, 255, 0.03);
+                        --glass-border: rgba(255, 255, 255, 0.05);
+                        --glass-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+                        --accent-primary: #2563eb;
+                        --accent-secondary: #1e40af;
+                        --accent-hover: #3b82f6;
+                        --text-main: #e2e8f0;
+                        --text-highlight: #ffffff;
+                    }
+
+                    /* 2. THE CASINO ATMOSPHERE */
+                    body {
+                        background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+                        color: var(--text-main);
+                        margin: 0;
+                        height: 100vh;
+                        height: 100dvh;
+                        width: 100vw;
+                        overflow: hidden;
+                        font-family: 'Poppins', sans-serif;
+                        touch-action: manipulation;
+                        /* 🌟 FIX: Disables accidental text highlighting */
+            user-select: none;
+            -webkit-user-select: none;
+                    }
+                    /* --- PHASE 1: LOBBY UI UPGRADES --- */
+                    .glass-panel {
+                        background: var(--glass-bg);
+                        backdrop-filter: blur(12px);
+                        -webkit-backdrop-filter: blur(12px);
+                        border: 1px solid var(--glass-border);
+                        border-radius: 16px;
+                        box-shadow: var(--glass-shadow);
+                        transition: all 0.4s ease;
+                    }
+                    .page-title {
+                        color: var(--text-highlight);
+                        font-weight: 700;
+                        letter-spacing: 1px;
+                        text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+                    }
+                    .premium-input {
+                        background: rgba(0, 0, 0, 0.4) !important;
+                        border: 1px solid var(--glass-border) !important;
+                        color: var(--text-highlight) !important;
+                        border-radius: 8px;
+                        box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+                        transition: all 0.3s ease;
+                    }
+                    .premium-input:focus {
+                        background: rgba(0, 0, 0, 0.6) !important;
+                        border-color: var(--accent-primary) !important;
+                        box-shadow: 0 0 15px rgba(37, 99, 235, 0.3) !important;
+                    }
+                    .premium-input::placeholder { color: #64748b !important; }
+                    .btn-premium {
+                        background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+                        color: #ffffff;
+                        font-weight: 600;
+                        border: none;
+                        border-radius: 30px;
+                        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+                        transition: all 0.3s ease;
+                        letter-spacing: 0.5px;
+                    }
+                    .btn-premium:hover, .btn-premium:active {
+                        background: linear-gradient(135deg, var(--accent-hover) 0%, var(--accent-primary) 100%);
+                        transform: translateY(-2px);
+                        color: #ffffff;
+                        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+                    }
+                    .premium-checkbox-container {
+                        background: rgba(0,0,0,0.2);
+                        padding: 10px 15px;
+                        border-radius: 8px;
+                        border: 1px solid var(--glass-border);
+                    }
+
+                    /* --- PHASE 3: MENU UI UPGRADES --- */
+        .glass-inner {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .btn-premium-danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: #ffffff;
+            font-weight: 600;
+            border: none;
+            border-radius: 30px;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+        }
+        .btn-premium-danger:hover, .btn-premium-danger:active {
+            background: linear-gradient(135deg, #ff7979 0%, #e74c3c 100%);
+            transform: translateY(-2px);
+            color: #ffffff;
+            box-shadow: 0 6px 20px rgba(231, 76, 60, 0.5);
+        }
+
+        /* --- PHASE 4: SCOREBOARD UI UPGRADES --- */
+        .glass-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            color: var(--text-main);
+        }
+        .glass-table thead th {
+            position: sticky;
+            top: 0;
+            background: rgba(0, 0, 0, 0.8); /* Solid enough to read, but glass-like */
+            padding: 10px;
+            border-bottom: 2px solid var(--accent-primary);
+            z-index: 2;
+        }
+        .glass-table tfoot td {
+            position: sticky;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 12px 10px;
+            border-top: 2px solid var(--accent-primary);
+        }
+        .glass-table tbody td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+
+        /* --- ROUND LIMIT STEPPER CSS --- */
+        .stepper-container {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .btn-stepper {
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.5rem;
+            line-height: 1;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
+            transition: transform 0.1s, opacity 0.2s;
+        }
+        .btn-stepper:active { transform: scale(0.9); }
+        .btn-stepper.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+                    #game-screen { display: none; height: 100%; position: relative; }
+
+                /* =========================================
+                   5. GAME SCREEN: HUD & PLAYER PODS
+                   ========================================= */
+                .hud-badge {
+                    /* Matches the rich dark gradient of the player pods */
+                    background: linear-gradient(145deg, rgba(30, 41, 59, 0.8) 0%, rgba(0, 0, 0, 0.9) 100%);
+                    backdrop-filter: blur(8px);
+                    -webkit-backdrop-filter: blur(8px);
+
+                    /* Glossy inset edge and smooth pill shape */
+                    border: 1px solid rgba(255, 255, 255, 0.15);
+                    border-radius: 20px;
+                    padding: 6px 14px;
+
+                    /* Deep drop shadow + inner glass highlight */
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+
+                    font-weight: 600;
+                    z-index: 50;
+                    text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+                    transition: all 0.2s ease;
+                }
+               #menu-button:hover {
+                    background: linear-gradient(145deg, rgba(45, 60, 85, 0.9) 0%, rgba(10, 10, 10, 0.9) 100%);
+                    box-shadow: 0 6px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+                }
+                #menu-button:active {
+                    transform: scale(0.92); /* Satisfying physical press effect */
+                }
+
+                .player-pod {
+    position: absolute;
+    /* 🌟 NEW: Rich dark gradient instead of flat black */
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.85) 0%, rgba(0, 0, 0, 0.95) 100%);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+
+    /* 🌟 NEW: Subtle borders and a glossy top-edge highlight */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+    padding: 6px 14px;
+    border-radius: 30px; /* Perfectly round edges */
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Slightly more breathing room */
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-highlight);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    z-index: 10;
+}
+
+                /* 🌟 NAME TRUNCATION */
+                #bottom-pod-name, #top-pod-name, #left-pod-name, #right-pod-name {
+                    max-width: 10ch;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    display: inline-block;
+                    vertical-align: middle;
+                }
+
+                /* 🌟 PORTRAIT STAGGER: Prevents collision with table */
+                .pod-top { top: 15px; left: 50%; transform: translateX(-50%); z-index: 10; }
+                .pod-left { top: 25%; left: 10px; }
+                .pod-right { top: 65%; right: 10px; }
+                .pod-bottom { bottom: 140px; left: 50%; transform: translateX(-50%); z-index: 5; }
+
+                /* 🌟 NEW: Inactive LED state (sunken, dark) */
+.turn-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #222;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
+}
+
+/* 🌟 NEW: Active LED state (glowing, bright) */
+.active-turn .turn-indicator {
+    background: #f1c40f;
+    /* The inset white makes it look like a lit bulb, the outer glow creates the neon effect */
+    box-shadow: 0 0 12px #f1c40f, inset 0 2px 4px rgba(255,255,255,0.8);
+}
+
+/* 🌟 NEW: Elegant pod border pulse */
+.active-turn {
+    border-color: rgba(241, 196, 15, 0.8);
+    animation: pulse-pod-premium 1.5s infinite alternate;
+}
+
+@keyframes pulse-pod-premium {
+    0% { box-shadow: 0 0 10px rgba(241, 196, 15, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
+    100% { box-shadow: 0 0 25px rgba(241, 196, 15, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15); }
+}
+                /* =========================================
+                   6. GAME SCREEN: TABLE & CARDS
+                   ========================================= */
+                /* 🌟 VMIN SCALING */
+                .table-center {
+                    position: absolute;
+                    top: 45%; left: 50%;
+                    transform: translate(-50%, -50%);
+                    width: 45vmin;
+                    height: 45vmin;
+                    border-radius: 50%;
+                    background: rgba(0, 0, 0, 0.15);
+                    border: 2px dashed rgba(255, 255, 255, 0.1);
+                }
+
+                @keyframes toss-bottom { 0% { transform: translate(0, 200px) scale(0.5); opacity: 0; } 100% { transform: translate(0, 30px) rotate(-10deg) scale(1); opacity: 1; } }
+                @keyframes toss-right { 0% { transform: translate(200px, 0) scale(0.5); opacity: 0; } 100% { transform: translate(40px, 0) rotate(20deg) scale(1); opacity: 1; } }
+                @keyframes toss-top { 0% { transform: translate(0, -200px) scale(0.5); opacity: 0; } 100% { transform: translate(0, -30px) rotate(10deg) scale(1); opacity: 1; } }
+                @keyframes toss-left { 0% { transform: translate(-200px, 0) scale(0.5); opacity: 0; } 100% { transform: translate(-40px, 0) rotate(-20deg) scale(1); opacity: 1; } }
+
+                /* 🌟 95% SPREAD */
+                .my-hand-container {
+                    position: absolute;
+                    bottom: 5px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    display: flex;
+                    width: 95vw;
+                    justify-content: center;
+                    padding: 10px 0;
+                    z-index: 10;
+                }
+
+                /* --- PREMIUM CARD PHYSICS & LIGHTING --- */
+                /* --- PREMIUM CARD PHYSICS & LIGHTING --- */
+                .playing-card {
+                    /* Layout & Sizing (Preserved) */
+                    width: 16vw; max-width: 75px;
+                    height: 22.4vw; max-height: 105px;
+                    margin-left: max(-5.5vw, -35px);
+                    flex-shrink: 0;
+
+                    background-color: transparent;
+                    background-size: 107% 107%;
+                    background-position: center center;
+                    background-repeat: no-repeat;
+
+                    /* 🌟 UPGRADE 1: The physical card edge */
+                   border-radius: 4px;
+                    border: 1px solid rgba(255, 255, 255, 0.4); /* Softened the outer rim light */
+                    overflow: hidden;
+
+                    position: relative;
+                    cursor: pointer;
+
+                    /* 🌟 UPGRADE 2: The Inner Bevel & Outer Shadows */
+                    box-shadow:
+                        inset 0 0 0 1px rgba(0, 0, 0, 0.05), /* Subtle inner bevel */
+                        -2px 4px 6px rgba(0, 0, 0, 0.4),
+                        -6px 12px 16px rgba(0, 0, 0, 0.3);
+
+                    /* 🌟 UPGRADE 3: Razor-sharp edges during hover animations */
+                    backface-visibility: hidden;
+                    transform: translateZ(0);
+                    -webkit-font-smoothing: subpixel-antialiased;
+
+                    transform-origin: bottom center;
+                    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                }
+
+                .playing-card:first-child { margin-left: 0; }
+
+                /* 3. Enhanced Hover Physics */
+                .playing-card:hover {
+                    transform: translateY(-20px) scale(1.05); /* Lifts UP and expands slightly */
+                    z-index: 100 !important;
+                    box-shadow:
+                        inset 0 0 0 1px rgba(255, 255, 255, 0.6), /* Edge catches more light */
+                        -4px 10px 15px rgba(0, 0, 0, 0.4),        /* Deeper shadow from lift */
+                        -12px 20px 30px rgba(0, 0, 0, 0.5);       /* Wide hovering shadow */
+                }
+
+                /* 4. Dynamic Lighting / Card Sheen */
+                .playing-card::after {
+                    content: '';
+                    position: absolute;
+                    top: 0; left: 0; right: 0; bottom: 0;
+                    border-radius: 6px;
+                    pointer-events: none; /* Let clicks pass through to the card */
+                    background: linear-gradient(
+                        115deg,
+                        rgba(255,255,255,0.4) 0%,    /* Bright corner glare */
+                        rgba(255,255,255,0.05) 25%,
+                        transparent 40%,
+                        transparent 100%
+                    );
+                    opacity: 0.8;
+                    transition: opacity 0.3s ease;
+                }
+
+                /* 5. Refined Disabled State */
+                .card-disabled {
+                    cursor: not-allowed;
+                    transform: scale(0.98); /* Sinks down slightly into the table */
+                    filter: brightness(60%) contrast(1.1) grayscale(40%);
+                    box-shadow:
+                        inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+                        -1px 2px 4px rgba(0, 0, 0, 0.8);
+                }
+                .card-disabled::after {
+                    opacity: 0.1; /* Dim the sheen on disabled cards */
+                }
+                .card-disabled:hover {
+                    transform: translateY(-2px) scale(0.98); /* Barely twitches on hover */
+                    box-shadow:
+                        inset 0 0 0 1px rgba(255, 255, 255, 0.15),
+                        -2px 4px 8px rgba(0, 0, 0, 0.7);
+                }
+
+
+/* 🌟 NEW: Premium Team Badges */
+.badge-team-a {
+    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 5px rgba(255, 65, 108, 0.4), inset 0 1px 2px rgba(255,255,255,0.4);
+    color: white;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+
+    /* 🌟 THE FIX: Perfect Circles */
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    padding: 0; /* Removed the pill padding */
+
+    /* Lock the shape and text direction */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Prevents Flexbox from squishing the circle */
+<!--    writing-mode: horizontal-tb; /* Forces the 'A' to stay upright even in side pods! */-->
+    line-height: 1;
+}
+
+.badge-team-b {
+    background: linear-gradient(135deg, #36D1DC 0%, #5B86E5 100%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 2px 5px rgba(91, 134, 229, 0.4), inset 0 1px 2px rgba(255,255,255,0.4);
+    color: white;
+    text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+
+    /* 🌟 THE FIX: Perfect Circles */
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    padding: 0; /* Removed the pill padding */
+
+    /* Lock the shape and text direction */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0; /* Prevents Flexbox from squishing the circle */
+<!--    writing-mode: horizontal-tb; /* Forces the 'B' to stay upright even in side pods! */-->
+    line-height: 1;
+}
+
+/* 🌟 NEON BOWNI ANIMATIONS */
+.bowni-neon-a {
+    border: 1px solid rgba(255, 150, 150, 0.8) !important;
+    animation: neon-pulse-a 1.5s infinite alternate;
+}
+
+.bowni-neon-b {
+    border: 1px solid rgba(150, 200, 255, 0.8) !important;
+    animation: neon-pulse-b 1.5s infinite alternate;
+}
+
+/* Team A (Red/Pink Neon) */
+@keyframes neon-pulse-a {
+    0% {
+        box-shadow: 0 0 5px rgba(231, 76, 60, 0.4), inset 0 1px 2px rgba(255,255,255,0.2);
+    }
+    100% {
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.6), /* Bright core */
+                    0 0 15px rgba(231, 76, 60, 0.8),  /* Medium glow */
+                    0 0 25px rgba(231, 76, 60, 0.5),  /* Wide halo */
+                    inset 0 1px 4px rgba(255, 255, 255, 0.5); /* Inner reflection */
+    }
+}
+
+/* Team B (Blue Neon) */
+@keyframes neon-pulse-b {
+    0% {
+        box-shadow: 0 0 5px rgba(52, 152, 219, 0.4), inset 0 1px 2px rgba(255,255,255,0.2);
+    }
+    100% {
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.6), /* Bright core */
+                    0 0 15px rgba(52, 152, 219, 0.8), /* Medium glow */
+                    0 0 25px rgba(52, 152, 219, 0.5), /* Wide halo */
+                    inset 0 1px 4px rgba(255, 255, 255, 0.5); /* Inner reflection */
+    }
+}
+
+                /* =========================================
+                   SMART ORIENTATION: MOBILE PORTRAIT
+                   ========================================= */
+                @media screen and (orientation: portrait) {
+                    /* 1. Push Top Pod safely below Trump and Menu badges */
+                    .pod-top {
+                        top: 60px;
+                    }
+
+                    /* 2. Vertical Side Pods for immersive layout */
+                    .pod-left, .pod-right {
+                        top: 50%;
+                        writing-mode: vertical-rl; /* Native vertical text */
+                        padding: 14px 6px;
+
+                        /* 🌟 THE FIX: Remove flex-direction: column, explicitly center items */
+                        align-items: center;
+                        justify-content: center;
+                    }
+                    .pod-left {
+                        transform: translateY(-50%) rotate(180deg); /* Flips text to face center */
+                    }
+                    .pod-right {
+                        transform: translateY(-50%);
+                    }
+
+                    /* 3. Tighter Card Spread for 13 cards in narrow width */
+                    .playing-card {
+                        margin-left: max(-9vw, -35px); /* 🌟 ADDED max() function */
+                    }
+                }
+
+                 /* =========================================
+                   SMART ORIENTATION: MOBILE LANDSCAPE
+                   ========================================= */
+                @media screen and (orientation: landscape) and (max-height: 600px) {
+                    #lobby-screen {
+                        height: 100vh !important;
+                        height: 100dvh !important;
+                        max-height: 100vh !important;
+                        max-height: 100dvh !important;
+                        overflow-y: auto !important;
+                        justify-content: flex-start !important;
+                        padding: 20px 15px 60px 15px !important;
+            <!--            display: flex !important;-->
+                    }
+                    .glass-panel {
+                        padding: 20px !important;
+                        margin-bottom: 20px;
+                        margin-top: 10px;
+                    }
+                    .page-title {
+                        font-size: 1.5rem;
+                        margin-bottom: 15px !important;
+                    }
+                    .premium-input {
+                        margin-bottom: 10px !important;
+                    }
+                    /* --- PHASE 3: MENU LANDSCAPE SCROLL FIX --- */
+
+        #game-menu-modal, #scoreboard-screen, #victory-screen {
+            align-items: flex-start !important;
+            padding: 40px 15px !important;
+            overflow-y: auto !important;
+        }
+
+                    /* --- PHASE 2: LANDSCAPE GAME FIXES --- */
+                    /* 1. Shift table up slightly */
+                    .table-center { top: 38%; width: 42vmin; height: 42vmin; }
+
+                    /* 2. Re-center Left/Right pods since height is small */
+                    .pod-left { top: 40%; }
+                    .pod-right { top: 40%; }
+
+                    /* 3. The "Me" Pod Overlay */
+                    .pod-bottom {
+                        bottom: 10px;
+                        z-index: 150;
+                        background: rgba(0,0,0,0.85);
+                        border-color: var(--accent-primary);
+                        box-shadow: 0 -2px 15px rgba(0,0,0,0.6);
+                    }
+
+                    /* 4. Tighter Card Spread for Landscape */
+                    .playing-card {
+                        width: 9vw; max-width: 65px;
+                        height: 14vw; max-height: 95px;
+                        margin-left: max(-3.5vw, -30px);
+                    }
+                    .card-center { font-size: 1.8rem; }
+                    /* --- VICTORY SCREEN LANDSCAPE FIXES --- */
+        #victory-screen .glass-panel {
+            max-height: none !important; /* Prevents the glass box from stopping at 95vh */
+        }
+        #victory-screen .hide-inner-scroll {
+            min-height: 100px; /* Guarantees the mini-table is always visible */
+            margin-bottom: 20px; /* Adds breathing room at the very bottom */
+        }
+                }
+
+                /* =========================================
+                   7. DESKTOP / TABLET SCALING
+                   ========================================= */
+                @media (min-width: 768px) and (orientation: landscape) {
+                    .table-center { width: 350px; height: 350px; top: 45%; }
+                    .playing-card { width: 85px; max-width: none; height: 125px; max-height: none; margin-left: -25px; }
+                    .my-hand-container { width: auto; max-width: 800px; }
+                    .pod-bottom { bottom: 145px; }
+                    .pod-left { top: 45%; left: 20px; }
+                    .pod-right { top: 45%; right: 20px; }
+
+                }
