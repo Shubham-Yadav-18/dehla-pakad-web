@@ -1,6 +1,7 @@
 package com.dahla.dto;
 
 import java.util.List;
+import java.util.Map;
 
 public class GameStateUpdate {
     public String currentPhase;
@@ -33,6 +34,12 @@ public class GameStateUpdate {
     public boolean isEvenDehla;
     public Integer maxRounds;
     public java.util.Map<String, String> playerTeams;
+
+    public String myPlayerId;
+    public String currentTurnPlayerId;
+    public List<String> seatingPlayerIds;
+    public List<String> trickPlayerIds;
+    public Map<String, String> playerTeamsById;
 
     public GameStateUpdate() {}
 }

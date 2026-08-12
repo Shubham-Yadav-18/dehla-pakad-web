@@ -32,6 +32,8 @@ public class Player {
         return team;
     }
 
+    public String getId() { return id; }
+
     // A method to actually play a card from their hand
     public Card playCard(Card cardToPlay) {
         if (hand.contains(cardToPlay)) {

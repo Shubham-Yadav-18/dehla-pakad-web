@@ -76,7 +76,8 @@ public class GameServer {
                         activeRooms.put(newCode, newRoom);
 
                         String token = generateToken();
-                        Player host = new Player(token, action.playerName, Team.TEAM_A);
+                        String id = generateToken();
+                        Player host = new Player(id, action.playerName, Team.TEAM_A);
 
                         globalPlayers.put(token, host);
                         connectionToToken.put(ctx, token);
@@ -99,7 +100,8 @@ public class GameServer {
                         // Determine team (A, B, A, B)
                         Team assignedTeam = (targetRoom.getPlayers().size() % 2 == 0) ? Team.TEAM_A : Team.TEAM_B;
                         String token = generateToken();
-                        Player joinedPlayer = new Player(token, action.playerName, assignedTeam);
+                        String id = generateToken();
+                        Player joinedPlayer = new Player(id, action.playerName, assignedTeam);
 
                         globalPlayers.put(token, joinedPlayer);
                         connectionToToken.put(ctx, token);
@@ -348,13 +350,21 @@ public class GameServer {
             update.currentPhase = room.getCurrentPhase().name();
             update.trumpSuit = room.getTrumpSuit() != null ? room.getTrumpSuit().name() : "NOT YET DISCOVERED";
             update.myName = player.getName();
+            update.myPlayerId = player.getId();
             update.currentTurnPlayerName = room.getCurrentTurnPlayer() != null ? room.getCurrentTurnPlayer().getName() : "Waiting...";
+            update.currentTurnPlayerId =
+                    room.getCurrentTurnPlayer() != null
+                            ? room.getCurrentTurnPlayer().getId()
+                            : null;
             update.isPaused = (room.isTrickPaused || room.isNetworkPaused);
             update.bowniTeam = room.getTeamWhoCalledKot() != null ? room.getTeamWhoCalledKot().name() : null;
             update.isMyTurn = (room.getCurrentTurnPlayer() != null && room.getCurrentTurnPlayer().equals(player));
 
             update.seatingOrder = room.getPlayers().stream()
                     .map(Player::getName)
+                    .collect(Collectors.toList());
+            update.seatingPlayerIds = room.getPlayers().stream()
+                    .map(Player::getId)
                     .collect(Collectors.toList());
 
             update.currentTrickCards = room.getCurrentTrick().getTableCards().values().stream()
@@ -363,6 +373,12 @@ public class GameServer {
 
             update.trickPlayerNames = room.getCurrentTrick().getTableCards().keySet().stream()
                     .map(Player::getName)
+                    .collect(Collectors.toList());
+            update.trickPlayerIds = room.getCurrentTrick()
+                    .getTableCards()
+                    .keySet()
+                    .stream()
+                    .map(Player::getId)
                     .collect(Collectors.toList());
             update.accumulatedPileSize = room.getTableAccumulator().size();
 
@@ -382,7 +398,16 @@ public class GameServer {
             update.maxRounds = room.getRules().maxRounds;
 
             update.playerTeams = room.getPlayers().stream()
-                    .collect(Collectors.toMap(Player::getName, p -> p.getTeam().name()));
+                    .collect(Collectors.toMap(
+                            Player::getName,
+                            p -> p.getTeam().name(),
+                            (existing, ignored) -> existing
+                    ));
+            update.playerTeamsById = room.getPlayers().stream()
+                    .collect(Collectors.toMap(
+                            Player::getId,
+                            p -> p.getTeam().name()
+                    ));
 
             try {
                 if (connection.session.isOpen()) {

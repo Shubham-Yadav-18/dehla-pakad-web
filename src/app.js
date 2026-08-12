@@ -156,49 +156,83 @@
           // ==========================================
           // TRUE ANTI-CLOCKWISE SEATING LOGIC
           // ==========================================
-          const myIndex = (state.seatingOrder && state.seatingOrder.length > 0) ? state.seatingOrder.indexOf(state.myName) : -1;
-          let rightPlayer = "Waiting...", topPlayer = "Waiting...", leftPlayer = "Waiting...";
+        const myIndex =
+            (state.seatingPlayerIds &&
+             state.seatingPlayerIds.length > 0 &&
+             state.myPlayerId)
+                ? state.seatingPlayerIds.indexOf(state.myPlayerId)
+                : -1;
+                  let rightPlayer = "Waiting...", topPlayer = "Waiting...", leftPlayer = "Waiting...";
+                  let rightPlayerId = null;
+                  let topPlayerId = null;
+                  let leftPlayerId = null;
 
-          if (myIndex !== -1 && state.seatingOrder.length > 0) {
+          if (
+              myIndex !== -1 &&
+              state.seatingOrder &&
+              state.seatingOrder.length > 0 &&
+              state.seatingPlayerIds &&
+              state.seatingPlayerIds.length > 0
+          ) {
               // Anti-Clockwise mapping: Right is +1, Top is +2, Left is +3
               rightPlayer = state.seatingOrder[(myIndex + 1) % state.seatingOrder.length] || "Waiting...";
               topPlayer = state.seatingOrder[(myIndex + 2) % state.seatingOrder.length] || "Waiting...";
               leftPlayer = state.seatingOrder[(myIndex + 3) % state.seatingOrder.length] || "Waiting...";
+               rightPlayerId =
+                  state.seatingPlayerIds[
+                      (myIndex + 1) % state.seatingPlayerIds.length
+                  ];
 
-              if (myIndex !== -1 && state.seatingOrder.length > 0) {
-              // Anti-Clockwise mapping: Right is +1, Top is +2, Left is +3
-              rightPlayer = state.seatingOrder[(myIndex + 1) % state.seatingOrder.length] || "Waiting...";
-              topPlayer = state.seatingOrder[(myIndex + 2) % state.seatingOrder.length] || "Waiting...";
-              leftPlayer = state.seatingOrder[(myIndex + 3) % state.seatingOrder.length] || "Waiting...";
+               topPlayerId =
+                  state.seatingPlayerIds[
+                      (myIndex + 2) % state.seatingPlayerIds.length
+                  ];
+
+               leftPlayerId =
+                  state.seatingPlayerIds[
+                      (myIndex + 3) % state.seatingPlayerIds.length
+                  ];
+
+
+
 
               // 🌟 NEW: Helper to generate Team Badges (Now without extra margin classes)
-              const getBadge = (pName) => {
-                  if (!state.playerTeams || pName === "Waiting...") return "";
-                  const team = state.playerTeams[pName];
-                  // Notice we removed 'ms-2' so Flexbox can handle the spacing naturally
-                  return team === 'TEAM_A' ? `<span class="badge-team-a" style="font-size: 0.75rem;">A</span>` : `<span class="badge-team-b" style="font-size: 0.75rem;">B</span>`;
+              const getBadge = (playerId) => {
+                  if (!state.playerTeamsById || !playerId) {
+                      return "";
+                  }
+
+                  const team = state.playerTeamsById[playerId];
+
+                  if (!team) {
+                      return "";
+                  }
+
+                  return team === "TEAM_A"
+                      ? `<span class="badge-team-a" style="font-size: 0.75rem;">A</span>`
+                      : `<span class="badge-team-b" style="font-size: 0.75rem;">B</span>`;
               };
 
               // 1. Inject the Badges into their new dedicated slots
-              document.getElementById("badge-me").innerHTML = getBadge(state.myName);
-              document.getElementById("badge-right").innerHTML = getBadge(rightPlayer);
-              document.getElementById("badge-top").innerHTML = getBadge(topPlayer);
-              document.getElementById("badge-left").innerHTML = getBadge(leftPlayer);
+              document.getElementById("badge-me").innerHTML = getBadge(state.myPlayerId)
+              document.getElementById("badge-right").innerHTML = getBadge(rightPlayerId)
+              document.getElementById("badge-top").innerHTML = getBadge(topPlayerId)
+              document.getElementById("badge-left").innerHTML = getBadge(leftPlayerId)
 
               // 2. Inject the Names cleanly
               document.getElementById("bottom-pod-name").innerText = state.myName + " (You)";
               document.getElementById("right-pod-name").innerText = rightPlayer;
               document.getElementById("top-pod-name").innerText = topPlayer;
               document.getElementById("left-pod-name").innerText = leftPlayer;
-          }
 
+          }
           // 🌟 NEW: Update the Immutable Menu Rules
           const evenRuleSpan = document.getElementById("menu-rule-even");
           if (evenRuleSpan) {
               evenRuleSpan.innerHTML = state.isEvenDehla ? "<span class='text-success'>🟢 ON</span>" : "<span class='text-danger'>🔴 OFF</span>";
               document.getElementById("menu-rule-limit").innerText = state.maxRounds ? state.maxRounds : "Unlimited";
           }
-          }
+
 
          // Clear glows
           document.getElementById("pod-me").classList.remove("active-turn");
@@ -215,9 +249,9 @@
                   document.getElementById("pod-me").classList.add("active-turn");
                  // document.getElementById("my-turn-glow").style.boxShadow = "0 0 30px rgba(241, 196, 15, 0.5) inset";
                   document.getElementById("bottom-pod-name").innerText = state.myName + " (Your Turn!)";
-              } else if (state.currentTurnPlayerName === rightPlayer) { document.getElementById("pod-right").classList.add("active-turn");
-              } else if (state.currentTurnPlayerName === topPlayer) { document.getElementById("pod-top").classList.add("active-turn");
-              } else if (state.currentTurnPlayerName === leftPlayer) { document.getElementById("pod-left").classList.add("active-turn"); }
+              } else if (state.currentTurnPlayerId === rightPlayerId) { document.getElementById("pod-right").classList.add("active-turn");
+              } else if (state.currentTurnPlayerId === topPlayerId) { document.getElementById("pod-top").classList.add("active-turn");
+              } else if (state.currentTurnPlayerId === leftPlayerId) { document.getElementById("pod-left").classList.add("active-turn"); }
           }
 
           //Card snap and dehla capture sound logic starts here
@@ -251,15 +285,17 @@
           const tableDiv = document.getElementById("table-cards");
           tableDiv.innerHTML = "";
 
-          if (state.currentTrickCards && state.trickPlayerNames) {
+          if (state.currentTrickCards && state.trickPlayerIds) {
               state.currentTrickCards.forEach((cardStr, index) => {
                   const cardHTML = createCardHTML(cardStr, false, true);
-                  const playedByName = state.trickPlayerNames[index];
+                  const playedById = state.trickPlayerIds
+                      ? state.trickPlayerIds[index]
+                      : null;
 
                   let animationDir = 'bottom'; // Me
-                  if (playedByName === rightPlayer) animationDir = 'right';
-                  if (playedByName === topPlayer) animationDir = 'top';
-                  if (playedByName === leftPlayer) animationDir = 'left';
+                  if (playedById === rightPlayerId) animationDir = 'right';
+                  if (playedById === topPlayerId) animationDir = 'top';
+                  if (playedById === leftPlayerId) animationDir = 'left';
 
                   tableDiv.innerHTML += `<div class="position-absolute" style="animation: toss-${animationDir} 0.4s ease-out forwards; z-index: ${index};">${cardHTML}</div>`;
               });
