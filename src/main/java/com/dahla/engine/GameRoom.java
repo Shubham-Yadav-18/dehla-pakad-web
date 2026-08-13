@@ -1,5 +1,6 @@
 package com.dahla.engine;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.dahla.dto.RoomSettings;
 import com.dahla.model.*;
 
@@ -9,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 public class GameRoom {
+    private static final Logger log = LoggerFactory.getLogger(GameRoom.class);
     private final String roomId;
     private final List<Player> players;
     private GamePhase currentPhase;

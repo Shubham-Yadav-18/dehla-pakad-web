@@ -1,5 +1,6 @@
 package com.dahla.server;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.dahla.dto.GameStateUpdate;
 import com.dahla.dto.PlayerAction;
 import com.dahla.dto.RoomSettings;
@@ -22,6 +23,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.ScheduledFuture;
 
 public class GameServer {
+
+    private static final Logger log = LoggerFactory.getLogger(GameServer.class);
 
     // 1. Tracks all active rooms by their 4-digit code (e.g., "A7X2" -> GameRoom)
     private static final Map<String, GameRoom> activeRooms = new ConcurrentHashMap<>();
@@ -67,6 +70,7 @@ public class GameServer {
                     // 1. LOBBY SYSTEM: CREATE & JOIN
                     // ==========================================
                     if ("CREATE_ROOM".equals(action.action)) {
+                        log.debug("roomId={} event=CREATE_ROOM_REQUEST connectionId={}", "PENDING", getLogConnectionId(ctx));
                         String newCode = generateRoomCode();
 
                         // 🌟 ARCHITECTURE UPDATE: Safely parse settings or use defaults
@@ -74,19 +78,23 @@ public class GameServer {
                         GameRoom newRoom = new GameRoom(newCode, roomRules);
 
                         activeRooms.put(newCode, newRoom);
+                        log.info("roomId={} event=ROOM_CREATED", newRoom.getRoomId());
 
                         String token = generateToken();
                         String id = generateToken();
                         Player host = new Player(id, action.playerName, Team.TEAM_A);
-
+                        log.debug("roomId={} event=PLAYER_CREATED playerId={} name={} team={}", newRoom.getRoomId(), host.getId(), host.getName(), host.getTeam());
                         globalPlayers.put(token, host);
                         connectionToToken.put(ctx, token);
                         tokenToConnection.put(token, ctx);
                         newRoom.addPlayer(host);
-
+                        log.info("roomId={} event=PLAYER_JOIN playerId={} name={} team={}", newRoom.getRoomId(), host.getId(), host.getName(), host.getTeam());
+                        logRoomState(newRoom, "AFTER_PLAYER_JOIN");
+                        log.debug("roomId={} event=CONNECTION_MAPPED playerId={} connectionId={}", newRoom.getRoomId(), host.getId(), getLogConnectionId(ctx));
                         broadcastToRoom(newRoom);
                     }
                     else if ("JOIN_ROOM".equals(action.action)) {
+                        log.debug("roomId={} event=JOIN_ROOM_REQUEST connectionId={}", action.roomCode, getLogConnectionId(ctx));
                         GameRoom targetRoom = activeRooms.get(action.roomCode);
                         if (targetRoom == null) {
                             ctx.send("{\"errorMessage\": \"Room not found!\"}");
@@ -102,12 +110,18 @@ public class GameServer {
                         String token = generateToken();
                         String id = generateToken();
                         Player joinedPlayer = new Player(id, action.playerName, assignedTeam);
-
+                        log.debug("roomId={} event=PLAYER_CREATED playerId={} name={} team={}", targetRoom.getRoomId(), joinedPlayer.getId(), joinedPlayer.getName(), joinedPlayer.getTeam());
+                        long sameNameCount = targetRoom.getPlayers().stream().filter(p -> p.getName().equalsIgnoreCase(joinedPlayer.getName())).count();
+                        if (sameNameCount > 0) {
+                            log.warn("roomId={} event=DUPLICATE_PLAYER_NAME playerId={} name={} existingCount={}", targetRoom.getRoomId(), joinedPlayer.getId(), joinedPlayer.getName(), sameNameCount);
+                        }
                         globalPlayers.put(token, joinedPlayer);
                         connectionToToken.put(ctx, token);
                         tokenToConnection.put(token, ctx); // 🌟 Track the real connection
                         targetRoom.addPlayer(joinedPlayer);
-
+                        log.info("roomId={} event=PLAYER_JOIN playerId={} name={} team={}", targetRoom.getRoomId(), joinedPlayer.getId(), joinedPlayer.getName(), joinedPlayer.getTeam());
+                        logRoomState(targetRoom, "AFTER_PLAYER_JOIN");
+                        log.debug("roomId={} event=CONNECTION_MAPPED playerId={} connectionId={}", targetRoom.getRoomId(), joinedPlayer.getId(), getLogConnectionId(ctx));
                         if (targetRoom.getPlayers().size() == 4) {
                             targetRoom.startGame();
                         }
@@ -117,6 +131,7 @@ public class GameServer {
                     // 2. RECONNECTION SYSTEM
                     // ==========================================
                     else if ("RECONNECT".equals(action.action)) {
+                        log.debug("roomId={} event=RECONNECT_REQUEST connectionId={}", "UNKNOWN", getLogConnectionId(ctx));
                         Player returningPlayer = globalPlayers.get(action.playerToken);
                         if (returningPlayer != null) {
 
@@ -124,19 +139,24 @@ public class GameServer {
                             WsContext oldCtx = tokenToConnection.get(action.playerToken);
                             if (oldCtx != null && oldCtx != ctx) {
                                 connectionToToken.remove(oldCtx);
+                                log.debug("roomId={} event=OLD_CONNECTION_REPLACED playerId={} oldConnectionId={} newConnectionId={}", "UNKNOWN", returningPlayer.getId(), getLogConnectionId(oldCtx), getLogConnectionId(ctx));
                             }
 
                             // Link their fresh browser connection as the only real one
                             tokenToConnection.put(action.playerToken, ctx);
                             connectionToToken.put(ctx, action.playerToken);
+                            log.debug("roomId={} event=CONNECTION_REASSIGNED playerId={} connectionId={}", "UNKNOWN", returningPlayer.getId(), getLogConnectionId(ctx));
 
                             GameRoom theirRoom = findRoomForPlayer(returningPlayer);
                             if (theirRoom != null) {
+                                log.info("roomId={} event=PLAYER_RECONNECTED playerId={} name={} connectionId={}", theirRoom.getRoomId(), returningPlayer.getId(), returningPlayer.getName(), getLogConnectionId(ctx));
                                 // Cancel the doomsday clock if it exists!
                                 ScheduledFuture<?> timer = reconnectTimers.remove(action.playerToken);
                                 if (timer != null) {
                                     timer.cancel(false);
+                                    log.info("roomId={} event=RECONNECT_TIMER_CANCELLED playerId={} reason=PLAYER_RECONNECTED", theirRoom.getRoomId(), returningPlayer.getId());
                                     theirRoom.isNetworkPaused = false; // Unfreeze the table!
+                                    log.info("roomId={} event=RECONNECT_SUCCESS playerId={} name={} connectionId={}", theirRoom.getRoomId(), returningPlayer.getId(), returningPlayer.getName(), getLogConnectionId(ctx));
                                     System.out.println(returningPlayer.getName() + " reconnected successfully!");
                                 }
                                 broadcastToRoom(theirRoom);
@@ -144,6 +164,7 @@ public class GameServer {
                             }
                         }
                         ctx.send("{\"errorMessage\": \"Session expired. Please rejoin.\"}");
+                        log.warn("roomId={} event=RECONNECT_FAILED connectionId={} reason=SESSION_NOT_FOUND", "UNKNOWN", getLogConnectionId(ctx));
                     }
                     // ==========================================
                     // 3. IN-GAME ACTIONS (Play Card, Play Again, Finish)
@@ -254,20 +275,25 @@ public class GameServer {
                             dissolveRoom(room, "The match has ended. Please rejoin to play a new game.");
                         }
                         else if ("LEAVE_ROOM".equals(action.action)) {
+                            log.info("roomId={} event=PLAYER_LEAVE_REQUEST playerId={} name={} phase={}", room.getRoomId(), player.getId(), player.getName(), room.getCurrentPhase());
                             if (room.getCurrentPhase() == GamePhase.WAITING_FOR_PLAYERS) {
                                 room.removePlayer(player);
+                                log.info("roomId={} event=PLAYER_REMOVED playerId={} name={} reason=PLAYER_LEFT_LOBBY", room.getRoomId(), player.getId(), player.getName());
                                 globalPlayers.remove(token);
                                 connectionToToken.remove(ctx);
                                 tokenToConnection.remove(token); // Cleanup
+                                log.debug("roomId={} event=PLAYER_SESSION_CLEANED playerId={} connectionId={}", room.getRoomId(), player.getId(), getLogConnectionId(ctx));
 
                                 if (room.getPlayers().isEmpty()) {
                                     activeRooms.remove(room.getRoomId());
-                                    System.out.println("Room " + room.getRoomId() + " closed (empty).");
+                                    log.info("roomId={} event=ROOM_CLOSED reason=EMPTY_AFTER_PLAYER_LEAVE", room.getRoomId());
                                 } else {
+                                    logRoomState(room, "AFTER_PLAYER_LEAVE");
                                     broadcastToRoom(room);
                                 }
                             } else {
                                 dissolveRoom(room, player.getName() + " left the table. The room has been dissolved. Please rejoin.");
+                                log.info("roomId={} event=PLAYER_LEAVE_DURING_GAME playerId={} name={} action=ROOM_DISSOLVE", room.getRoomId(), player.getId(), player.getName());
                             }
                         }
                     }
@@ -277,13 +303,16 @@ public class GameServer {
             });
 
             ws.onClose(ctx -> {
+                log.debug("roomId={} event=WS_CLOSE connectionId={}", "UNKNOWN", getLogConnectionId(ctx));
                 String token = connectionToToken.remove(ctx);
+                log.debug("roomId={} event=WS_CLOSE_TOKEN_RESOLVED connectionId={} tokenKnown={}", "UNKNOWN", getLogConnectionId(ctx), token != null);
                 System.out.println("[NETWORK] A WebSocket connection dropped.");
 
                 if (token != null) {
                     // 🌟 NEW FIX 5: Is this a Ghost connection dropping?
                     WsContext activeCtx = tokenToConnection.get(token);
                     if (activeCtx != null && activeCtx != ctx) {
+                        log.debug("roomId={} event=GHOST_CONNECTION_CLOSE_IGNORED connectionId={} activeConnectionId={}", "UNKNOWN", getLogConnectionId(ctx), getLogConnectionId(activeCtx));
                         System.out.println("[NETWORK] Ghost connection safely ignored. Player is still active in the game.");
                         return; // 🛡️ ABORT! Do not pause the game.
                     }
@@ -296,6 +325,7 @@ public class GameServer {
                         GameRoom room = findRoomForPlayer(player);
 
                         if (room != null) {
+                            log.info("roomId={} event=PLAYER_DISCONNECTED playerId={} name={} connectionId={}", room.getRoomId(), player.getId(), player.getName(), getLogConnectionId(ctx));
                             if (room.getCurrentPhase() == GamePhase.WAITING_FOR_PLAYERS) {
                                 room.removePlayer(player);
                                 globalPlayers.remove(token);
@@ -309,11 +339,14 @@ public class GameServer {
                             }
                             else {
                                 room.isNetworkPaused = true;
+                                log.info("roomId={} event=NETWORK_PAUSED playerId={} reason=PLAYER_DISCONNECTED", room.getRoomId(), player.getId());
                                 System.out.println("[ROOM " + room.getRoomId() + "] " + player.getName() + " disconnected! Freezing table. Starting 60s timer...");
                                 broadcastToRoom(room);
-
+                                log.info("roomId={} event=RECONNECT_TIMER_STARTED playerId={} timeoutSeconds=60", room.getRoomId(), player.getId());
                                 ScheduledFuture<?> timer = scheduler.schedule(() -> {
                                     try {
+                                        log.info("roomId={} event=RECONNECT_TIMER_EXPIRED playerId={}", room.getRoomId(), player.getId());
+                                        log.info("roomId={} event=ROOM_DISSOLVE reason=RECONNECT_TIMEOUT", room.getRoomId());
                                         System.out.println("[TIMER] 60s expired. Dissolving room " + room.getRoomId());
                                         dissolveRoom(room, player.getName() + " lost connection. The room has been dissolved. Please rejoin.");
                                     } catch (Exception e) {
@@ -455,5 +488,26 @@ public class GameServer {
             }
         }
         System.out.println("Room " + room.getRoomId() + " dissolved: " + reasonMessage);
+    }
+
+
+    // Methods for loggers
+    private static String getLogConnectionId(WsContext ctx) {
+        return Integer.toHexString(System.identityHashCode(ctx));
+    }
+
+    private static void logRoomState(GameRoom room, String event) {
+        if (room == null) {
+            log.warn("roomId={} event={} room=null", "UNKNOWN", event);
+            return;
+        }
+
+        String players = room.getPlayers().stream().map(player -> "playerId=" + player.getId() + ",name=" + player.getName() + ",team=" + player.getTeam()).collect(Collectors.joining(" | "));
+        log.debug("roomId={} event={} playerCount={} players=[{}]", room.getRoomId(), event, room.getPlayers().size(), players);
+    }
+
+    private static void logRoomInvariantViolation(GameRoom room, String event, String details) {
+        String roomId = room != null ? room.getRoomId() : "UNKNOWN";
+        log.warn("roomId={} event={} invariantViolation={}", roomId, event, details);
     }
 }
