@@ -13,7 +13,7 @@ import java.util.concurrent.ScheduledFuture;
 public class GameRoom {
     private static final Logger log = LoggerFactory.getLogger(GameRoom.class);
     private final String roomId;
-    private final List<Player> players;
+    private final List<Player> players = new java.util.concurrent.CopyOnWriteArrayList<>();
     private GamePhase currentPhase;
 
     public boolean isTrickPaused = false;   // For the 2.5s animation
@@ -55,7 +55,6 @@ public class GameRoom {
         this.roomId = roomId;
         // NULL SAFETY: If rules are missing, enforce safe defaults instantly
         this.rules = (rules != null) ? rules : new RoomSettings();
-        this.players = new ArrayList<>();
         this.currentPhase = GamePhase.WAITING_FOR_PLAYERS;
         this.tableAccumulator = new ArrayList<>();
         this.currentTrick = new Trick();

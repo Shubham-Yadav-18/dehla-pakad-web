@@ -40,6 +40,7 @@ public class GameStateUpdate {
     public List<String> seatingPlayerIds;
     public List<String> trickPlayerIds;
     public Map<String, String> playerTeamsById;
-
+    // 🌟 NEW: Connection Status Map (Player ID -> "GREEN" | "ORANGE" | "RED")
+    public Map<String, String> connectionStatuses;
     public GameStateUpdate() {}
 }

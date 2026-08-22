@@ -46,6 +46,8 @@ public class GameServer {
     // 5. Tracks the 60-second reconnect countdowns for disconnected players
     private static final Map<String, ScheduledFuture<?>> reconnectTimers = new ConcurrentHashMap<>();
 
+    // 6🌟 Tracks the last active timestamp (System.currentTimeMillis()) for every token
+    private static final Map<String, Long> clientHeartbeats = new ConcurrentHashMap<>();
     public static void main(String[] args) {
         System.out.println("Starting Dehla Pakad Server on port 7070...");
 
@@ -54,6 +56,14 @@ public class GameServer {
         int port = (portStr != null) ? Integer.parseInt(portStr) : 7070;
 
         Javalin app = Javalin.create().start(port);
+        // 🌟 THE STATUS BROADCASTER: Runs every 3 seconds to push network status to all live rooms
+        scheduler.scheduleAtFixedRate(() -> {
+            for (GameRoom room : activeRooms.values()) {
+                // Because broadcastToRoom computes the latest connectionStatuses,
+                // this ensures the UI never lies, even if players are idle.
+                broadcastToRoom(room);
+            }
+        }, 3, 3, TimeUnit.SECONDS);
 
         app.ws("/game", ws -> {
 
@@ -66,6 +76,21 @@ public class GameServer {
                 try {
                     PlayerAction action = jsonMapper.readValue(ctx.message(), PlayerAction.class);
 
+                    // 🛡️ LOCK-FREE HEARTBEAT: Update timestamp and return immediately
+                    if ("PING".equals(action.action)) {
+                        String token = connectionToToken.get(ctx);
+                        if (token != null) {
+                            clientHeartbeats.put(token, System.currentTimeMillis());
+                        }
+                        ctx.send("{\"action\": \"PONG\"}");
+                        return;
+                    }
+
+                    // Update heartbeat for regular gameplay actions as well
+                    String currentToken = connectionToToken.get(ctx);
+                    if (currentToken != null) {
+                        clientHeartbeats.put(currentToken, System.currentTimeMillis());
+                    }
                     // ==========================================
                     // ==========================================
                     // 1. LOBBY SYSTEM: CREATE & JOIN
@@ -106,7 +131,7 @@ public class GameServer {
                         globalPlayers.put(token, host);
                         connectionToToken.put(ctx, token);
                         tokenToConnection.put(token, ctx);
-
+                        clientHeartbeats.put(token, System.currentTimeMillis());
                         newRoom.addPlayer(host);
                         log.info("roomId={} event=PLAYER_JOIN playerId={} name={} team={}", newRoom.getRoomId(), host.getId(), host.getName(), host.getTeam());
                         logRoomState(newRoom, "AFTER_PLAYER_JOIN");
@@ -154,7 +179,7 @@ public class GameServer {
                             globalPlayers.put(token, joinedPlayer);
                             connectionToToken.put(ctx, token);
                             tokenToConnection.put(token, ctx);
-
+                            clientHeartbeats.put(token, System.currentTimeMillis());
                             targetRoom.addPlayer(joinedPlayer);
 
                             log.info("roomId={} event=PLAYER_JOIN playerId={} name={} team={}", targetRoom.getRoomId(), joinedPlayer.getId(), joinedPlayer.getName(), joinedPlayer.getTeam());
@@ -339,6 +364,7 @@ public class GameServer {
                                     globalPlayers.remove(token);
                                     connectionToToken.remove(ctx);
                                     tokenToConnection.remove(token); // Cleanup
+                                    clientHeartbeats.remove(token);
                                     log.debug("roomId={} event=PLAYER_SESSION_CLEANED playerId={} connectionId={}", room.getRoomId(), player.getId(), getLogConnectionId(ctx));
 
                                     if (room.getPlayers().isEmpty()) {
@@ -383,7 +409,8 @@ public class GameServer {
                         System.out.println("[NETWORK] Ghost connection safely ignored. Player is still active in the game.");
                         return; // 🛡️ ABORT! Do not pause the game.
                     }
-
+                    // Mark as immediately offline for truthful LED display
+                    clientHeartbeats.put(token, 0L);
                     // Not a ghost. Proceed with normal disconnect.
                     tokenToConnection.remove(token);
                     Player player = globalPlayers.get(token);
@@ -398,6 +425,7 @@ public class GameServer {
                             if (room.getCurrentPhase() == GamePhase.WAITING_FOR_PLAYERS) {
                                 room.removePlayer(player);
                                 globalPlayers.remove(token);
+                                clientHeartbeats.remove(token);
                                 System.out.println(player.getName() + " left the lobby.");
 
                                 if (room.getPlayers().isEmpty()) {
@@ -407,6 +435,7 @@ public class GameServer {
                             }
                             else if (room.getCurrentPhase() == GamePhase.MATCH_OVER) {
                                 globalPlayers.remove(token);
+                                clientHeartbeats.remove(token);
                             }
                             else {
                                 room.isNetworkPaused = true;
@@ -519,6 +548,35 @@ public class GameServer {
                             Player::getId,
                             p -> p.getTeam().name()
                     ));
+            //Connection status starts(later it will be converted into function)
+            // 🌟 COMPUTE TRUTHFUL CONNECTION STATUS (Lock-Free)
+            long now = System.currentTimeMillis();
+            Map<String, String> statuses = new java.util.HashMap<>();
+            for (Player p : room.getPlayers()) {
+                // Find token for player
+                String playerToken = globalPlayers.entrySet().stream()
+                        .filter(e -> e.getValue().getId().equals(p.getId()))
+                        .map(Map.Entry::getKey)
+                        .findFirst().orElse(null);
+
+                if (playerToken == null) {
+                    statuses.put(p.getId(), "RED");
+                } else {
+                    long lastSeen = clientHeartbeats.getOrDefault(playerToken, 0L);
+                    long elapsed = now - lastSeen;
+
+                    // Check if actively paused by reconnect timer
+                    if (reconnectTimers.containsKey(playerToken) || lastSeen == 0L || elapsed > 10000) {
+                        statuses.put(p.getId(), "RED");
+                    } else if (elapsed > 4000) {
+                        statuses.put(p.getId(), "ORANGE");
+                    } else {
+                        statuses.put(p.getId(), "GREEN");
+                    }
+                }
+            }
+            update.connectionStatuses = statuses;
+            //Connection status Ends(later it will be converted into function)
 
             try {
                 if (connection.session.isOpen()) {
@@ -571,6 +629,7 @@ public class GameServer {
                             }
                         }
                         globalPlayers.remove(token);
+                        clientHeartbeats.remove(token);
                         break;
                     }
                 }
