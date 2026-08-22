@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
 
 public class GameRoom {
     private static final Logger log = LoggerFactory.getLogger(GameRoom.class);
@@ -46,6 +47,9 @@ public class GameRoom {
     private Player currentTurnPlayer;
     // 🌟 NEW: The immutable rulebook for this specific room
     private final RoomSettings rules;
+    // 🌟 NEW: Track active timers to prevent memory leaks and zombie threads
+    private ScheduledFuture<?> activeTrickTimer;
+    private ScheduledFuture<?> activeBowniTimer;
 
     public GameRoom(String roomId, RoomSettings rules) {
         this.roomId = roomId;
@@ -326,6 +330,18 @@ public class GameRoom {
         return (int) cards.stream()
                 .filter(c -> "TEN".equals(c.getRank().name()))
                 .count();
+    }
+    // 🌟 NEW: Task Lifecycle Management
+    public void setActiveTrickTimer(ScheduledFuture<?> timer) { this.activeTrickTimer = timer; }
+    public void setActiveBowniTimer(ScheduledFuture<?> timer) { this.activeBowniTimer = timer; }
+
+    public void cancelAllTimers() {
+        if (activeTrickTimer != null && !activeTrickTimer.isDone()) {
+            activeTrickTimer.cancel(false);
+        }
+        if (activeBowniTimer != null && !activeBowniTimer.isDone()) {
+            activeBowniTimer.cancel(false);
+        }
     }
 
     // Getters

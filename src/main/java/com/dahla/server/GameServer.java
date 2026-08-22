@@ -67,64 +67,105 @@ public class GameServer {
                     PlayerAction action = jsonMapper.readValue(ctx.message(), PlayerAction.class);
 
                     // ==========================================
+                    // ==========================================
                     // 1. LOBBY SYSTEM: CREATE & JOIN
                     // ==========================================
                     if ("CREATE_ROOM".equals(action.action)) {
+                        // 🛡️ IDEMPOTENCY GUARD: Ignore duplicate requests
+                        if (connectionToToken.containsKey(ctx)) {
+                            log.warn("roomId={} event=DUPLICATE_CREATE_IGNORED connectionId={}", "PENDING", getLogConnectionId(ctx));
+                            return;
+                        }
+
                         log.debug("roomId={} event=CREATE_ROOM_REQUEST connectionId={}", "PENDING", getLogConnectionId(ctx));
-                        String newCode = generateRoomCode();
-
-                        // 🌟 ARCHITECTURE UPDATE: Safely parse settings or use defaults
                         RoomSettings roomRules = action.settings != null ? action.settings : new RoomSettings();
-                        GameRoom newRoom = new GameRoom(newCode, roomRules);
 
-                        activeRooms.put(newCode, newRoom);
+                        String newCode;
+                        GameRoom newRoom;
+                        int attempts = 0;
+
+                        // 🛡️ ATOMIC CREATE: Ensure room code is 100% unique
+                        while (true) {
+                            newCode = generateRoomCode();
+                            newRoom = new GameRoom(newCode, roomRules);
+                            // putIfAbsent ensures thread-safety without locking the whole map
+                            if (activeRooms.putIfAbsent(newCode, newRoom) == null) break;
+                            if (++attempts > 100) {
+                                ctx.send("{\"errorMessage\": \"Server at capacity. Could not generate unique code.\"}");
+                                return;
+                            }
+                        }
+
                         log.info("roomId={} event=ROOM_CREATED", newRoom.getRoomId());
 
                         String token = generateToken();
                         String id = generateToken();
                         Player host = new Player(id, action.playerName, Team.TEAM_A);
                         log.debug("roomId={} event=PLAYER_CREATED playerId={} name={} team={}", newRoom.getRoomId(), host.getId(), host.getName(), host.getTeam());
+
                         globalPlayers.put(token, host);
                         connectionToToken.put(ctx, token);
                         tokenToConnection.put(token, ctx);
+
                         newRoom.addPlayer(host);
                         log.info("roomId={} event=PLAYER_JOIN playerId={} name={} team={}", newRoom.getRoomId(), host.getId(), host.getName(), host.getTeam());
                         logRoomState(newRoom, "AFTER_PLAYER_JOIN");
                         log.debug("roomId={} event=CONNECTION_MAPPED playerId={} connectionId={}", newRoom.getRoomId(), host.getId(), getLogConnectionId(ctx));
+
                         broadcastToRoom(newRoom);
                     }
                     else if ("JOIN_ROOM".equals(action.action)) {
+                        // 🛡️ IDEMPOTENCY GUARD: Ignore duplicate join clicks
+                        if (connectionToToken.containsKey(ctx)) {
+                            log.warn("roomId={} event=DUPLICATE_JOIN_IGNORED connectionId={}", action.roomCode, getLogConnectionId(ctx));
+                            return;
+                        }
+
                         log.debug("roomId={} event=JOIN_ROOM_REQUEST connectionId={}", action.roomCode, getLogConnectionId(ctx));
                         GameRoom targetRoom = activeRooms.get(action.roomCode);
                         if (targetRoom == null) {
                             ctx.send("{\"errorMessage\": \"Room not found!\"}");
                             return;
                         }
-                        if (targetRoom.getPlayers().size() >= 4) {
-                            ctx.send("{\"errorMessage\": \"Room is full!\"}");
-                            return;
-                        }
 
-                        // Determine team (A, B, A, B)
-                        Team assignedTeam = (targetRoom.getPlayers().size() % 2 == 0) ? Team.TEAM_A : Team.TEAM_B;
-                        String token = generateToken();
-                        String id = generateToken();
-                        Player joinedPlayer = new Player(id, action.playerName, assignedTeam);
-                        log.debug("roomId={} event=PLAYER_CREATED playerId={} name={} team={}", targetRoom.getRoomId(), joinedPlayer.getId(), joinedPlayer.getName(), joinedPlayer.getTeam());
-                        long sameNameCount = targetRoom.getPlayers().stream().filter(p -> p.getName().equalsIgnoreCase(joinedPlayer.getName())).count();
-                        if (sameNameCount > 0) {
-                            log.warn("roomId={} event=DUPLICATE_PLAYER_NAME playerId={} name={} existingCount={}", targetRoom.getRoomId(), joinedPlayer.getId(), joinedPlayer.getName(), sameNameCount);
-                        }
-                        globalPlayers.put(token, joinedPlayer);
-                        connectionToToken.put(ctx, token);
-                        tokenToConnection.put(token, ctx); // 🌟 Track the real connection
-                        targetRoom.addPlayer(joinedPlayer);
-                        log.info("roomId={} event=PLAYER_JOIN playerId={} name={} team={}", targetRoom.getRoomId(), joinedPlayer.getId(), joinedPlayer.getName(), joinedPlayer.getTeam());
-                        logRoomState(targetRoom, "AFTER_PLAYER_JOIN");
-                        log.debug("roomId={} event=CONNECTION_MAPPED playerId={} connectionId={}", targetRoom.getRoomId(), joinedPlayer.getId(), getLogConnectionId(ctx));
-                        if (targetRoom.getPlayers().size() == 4) {
-                            targetRoom.startGame();
-                        }
+                        // 🛡️ THE LOCK: Check size, check duplicates, and add player atomically
+                        synchronized (targetRoom) {
+                            if (targetRoom.getPlayers().size() >= 4) {
+                                ctx.send("{\"errorMessage\": \"Room is full!\"}");
+                                return;
+                            }
+
+                            // 🛡️ IDEMPOTENCY GUARD 2: Prevent the same name from joining twice
+                            boolean nameExists = targetRoom.getPlayers().stream()
+                                    .anyMatch(p -> p.getName().equalsIgnoreCase(action.playerName));
+                            if (nameExists) {
+                                log.warn("roomId={} event=DUPLICATE_PLAYER_NAME_REJECTED name={}", targetRoom.getRoomId(), action.playerName);
+                                ctx.send("{\"errorMessage\": \"A player with this name is already in the room!\"}");
+                                return;
+                            }
+                            // Determine team (A, B, A, B)
+                            Team assignedTeam = (targetRoom.getPlayers().size() % 2 == 0) ? Team.TEAM_A : Team.TEAM_B;
+                            String token = generateToken();
+                            String id = generateToken();
+                            Player joinedPlayer = new Player(id, action.playerName, assignedTeam);
+
+                            log.debug("roomId={} event=PLAYER_CREATED playerId={} name={} team={}", targetRoom.getRoomId(), joinedPlayer.getId(), joinedPlayer.getName(), joinedPlayer.getTeam());
+
+                            globalPlayers.put(token, joinedPlayer);
+                            connectionToToken.put(ctx, token);
+                            tokenToConnection.put(token, ctx);
+
+                            targetRoom.addPlayer(joinedPlayer);
+
+                            log.info("roomId={} event=PLAYER_JOIN playerId={} name={} team={}", targetRoom.getRoomId(), joinedPlayer.getId(), joinedPlayer.getName(), joinedPlayer.getTeam());
+                            logRoomState(targetRoom, "AFTER_PLAYER_JOIN");
+                            log.debug("roomId={} event=CONNECTION_MAPPED playerId={} connectionId={}", targetRoom.getRoomId(), joinedPlayer.getId(), getLogConnectionId(ctx));
+
+                            if (targetRoom.getPlayers().size() == 4) {
+                                targetRoom.startGame();
+                            }
+                        } // 🔓 LOCK RELEASED
+
                         broadcastToRoom(targetRoom);
                     }
                     // ==========================================
@@ -149,15 +190,19 @@ public class GameServer {
 
                             GameRoom theirRoom = findRoomForPlayer(returningPlayer);
                             if (theirRoom != null) {
-                                log.info("roomId={} event=PLAYER_RECONNECTED playerId={} name={} connectionId={}", theirRoom.getRoomId(), returningPlayer.getId(), returningPlayer.getName(), getLogConnectionId(ctx));
-                                // Cancel the doomsday clock if it exists!
-                                ScheduledFuture<?> timer = reconnectTimers.remove(action.playerToken);
-                                if (timer != null) {
-                                    timer.cancel(false);
-                                    log.info("roomId={} event=RECONNECT_TIMER_CANCELLED playerId={} reason=PLAYER_RECONNECTED", theirRoom.getRoomId(), returningPlayer.getId());
+                                // 🛡️ THE LOCK: Safely disable the disconnect timer
+                                synchronized (theirRoom) {
+                                    log.info("roomId={} event=PLAYER_RECONNECTED playerId={} name={} connectionId={}", theirRoom.getRoomId(), returningPlayer.getId(), returningPlayer.getName(), getLogConnectionId(ctx));
+                                    // Cancel the doomsday clock if it exists!
+                                    ScheduledFuture<?> timer = reconnectTimers.remove(action.playerToken);
+                                    if (timer != null) {
+
+                                        timer.cancel(false);
+                                        log.info("roomId={} event=RECONNECT_TIMER_CANCELLED playerId={} reason=PLAYER_RECONNECTED", theirRoom.getRoomId(), returningPlayer.getId());
+                                        log.info("roomId={} event=RECONNECT_SUCCESS playerId={} name={} connectionId={}", theirRoom.getRoomId(), returningPlayer.getId(), returningPlayer.getName(), getLogConnectionId(ctx));
+                                        System.out.println(returningPlayer.getName() + " reconnected successfully!");
+                                    }
                                     theirRoom.isNetworkPaused = false; // Unfreeze the table!
-                                    log.info("roomId={} event=RECONNECT_SUCCESS playerId={} name={} connectionId={}", theirRoom.getRoomId(), returningPlayer.getId(), returningPlayer.getName(), getLogConnectionId(ctx));
-                                    System.out.println(returningPlayer.getName() + " reconnected successfully!");
                                 }
                                 broadcastToRoom(theirRoom);
                                 return;
@@ -167,7 +212,7 @@ public class GameServer {
                         log.warn("roomId={} event=RECONNECT_FAILED connectionId={} reason=SESSION_NOT_FOUND", "UNKNOWN", getLogConnectionId(ctx));
                     }
                     // ==========================================
-                    // 3. IN-GAME ACTIONS (Play Card, Play Again, Finish)
+                    // 3. IN-GAME ACTIONS (Play Card, Play Again, Finish, Leave)
                     // ==========================================
                     else {
                         String token = connectionToToken.get(ctx);
@@ -177,124 +222,146 @@ public class GameServer {
                         GameRoom room = findRoomForPlayer(player);
                         if (room == null) return;
 
-                        if ("PLAY_CARD".equals(action.action)) {
-                            try {
-                                Card cardToPlay = player.getHand().stream()
-                                        .filter(c -> c.getSuit().name().equals(action.suit) && c.getRank().name().equals(action.rank))
-                                        .findFirst()
-                                        .orElseThrow(() -> new IllegalArgumentException("Card not found!"));
+                        boolean sendError = false;
+                        String errorMessage = "";
+                        boolean shouldBroadcast = false;
 
-                                room.playCard(player, cardToPlay);
-                                broadcastToRoom(room); // Instantly broadcast so everyone sees the 4th card land
-                                // 🛡️ THE LOCK: Only spawn the timer if we aren't already resolving!
-                                if (room.isTrickPaused && !room.isTrickResolving) {
-                                    room.isTrickResolving = true;
-                                    System.out.println("[TIMER] Trick finished. Starting 2.5s animation timer for Room: " + room.getRoomId());
+                        // 🛡️ THE MASTER LOCK: All in-game interactions must serialize here
+                        synchronized (room) {
+                            if ("PLAY_CARD".equals(action.action)) {
+                                try {
+                                    Card cardToPlay = player.getHand().stream()
+                                            .filter(c -> c.getSuit().name().equals(action.suit) && c.getRank().name().equals(action.rank))
+                                            .findFirst()
+                                            .orElseThrow(() -> new IllegalArgumentException("Card not found!"));
 
-                                    // 🌟 NEW FIX 3: Self-Polling Runnable to prevent Timer Collisions
-                                    scheduler.schedule(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            try {
-                                                // 🛡️ THE ARMOR: If someone disconnected, DO NOT sweep the trick! Wait 1s and check again.
-                                                if (room.isNetworkPaused) {
-                                                    System.out.println("[TIMER] Room " + room.getRoomId() + " is frozen. Trick resolution paused. Waiting 1s...");
-                                                    scheduler.schedule(this, 1000, TimeUnit.MILLISECONDS);
-                                                    return;
-                                                }
+                                    room.playCard(player, cardToPlay);
+                                    shouldBroadcast = true; // State changed, mark for broadcast
 
-                                                System.out.println("[TIMER] 2.5s passed. Resolving trick for Room: " + room.getRoomId());
-                                                room.finalizeTrick();
-                                                room.isTrickResolving = false;// Unlock the door
-                                                broadcastToRoom(room);
+                                    // 🛡️ THE LOCK: Only spawn the timer if we aren't already resolving!
+                                    if (room.isTrickPaused && !room.isTrickResolving) {
+                                        room.isTrickResolving = true;
+                                        System.out.println("[TIMER] Trick finished. Starting 2.5s animation timer for Room: " + room.getRoomId());
 
-                                                // If we just entered Bowni Phase, start the 10s clock!
-                                                if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION && !room.isBowniTimerStarted) {
-                                                    System.out.println("[TIMER] Bowni Phase hit! Starting 10s countdown for Room: " + room.getRoomId());
-                                                    room.isBowniTimerStarted = true;
-
-                                                    // 🌟 NEW FIX 4: Self-Polling Runnable for the Bowni Timer
-                                                    scheduler.schedule(new Runnable() {
-                                                        @Override
-                                                        public void run() {
-                                                            try {
-                                                                // 🛡️ THE ARMOR: Pause the countdown if the room is frozen
-                                                                if (room.isNetworkPaused) {
-                                                                    System.out.println("[TIMER] Room " + room.getRoomId() + " is frozen. Bowni countdown paused. Waiting 1s...");
-                                                                    scheduler.schedule(this, 1000, TimeUnit.MILLISECONDS);
-                                                                    return;
-                                                                }
-
-                                                                // If nobody clicked it after 10s, silently start the game
-                                                                if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION) {
-                                                                    System.out.println("[TIMER] 10s passed. Nobody called Bowni. Auto-starting Main Play.");
-                                                                    room.setCurrentPhase(GamePhase.MAIN_PLAY);
-                                                                    broadcastToRoom(room);
-                                                                }
-                                                            } catch (Exception e) {
-                                                                System.err.println("[CRITICAL ERROR] Bowni Timer Crashed: " + e.getMessage());
-                                                                e.printStackTrace();
-                                                            }
+                                        ScheduledFuture<?> trickTask = scheduler.schedule(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                try {
+                                                    // 🛡️ THE TIMER LOCK: Thread re-enters lock to safely modify game state
+                                                    synchronized (room) {
+                                                        if (room.isNetworkPaused) {
+                                                            System.out.println("[TIMER] Room " + room.getRoomId() + " is frozen. Trick resolution paused. Waiting 1s...");
+                                                            room.setActiveTrickTimer(scheduler.schedule(this, 1000, TimeUnit.MILLISECONDS));
+                                                            return;
                                                         }
-                                                    }, 10, TimeUnit.SECONDS);
-                                                }
-                                            } catch (Exception e) {
-                                                System.err.println("[CRITICAL ERROR] Trick Resolution Timer Crashed! " + e.getMessage());
-                                                e.printStackTrace();
-                                                // Emergency unfreeze so players can keep playing
-                                                room.isTrickPaused = false;
-                                                room.isTrickResolving = false; // Emergency unlock
-                                                broadcastToRoom(room);
-                                            }
-                                        }
-                                    }, 2500, TimeUnit.MILLISECONDS);
-                                }
-                            }catch (IllegalArgumentException | IllegalStateException e) {
-                                // 🌟 FIX: Added an "errorType" flag to the JSON payload
-                                String errorJson = String.format("{\"errorMessage\": \"%s\", \"errorType\": \"RULE_VIOLATION\"}", e.getMessage().replace("\"", "\\\""));
-                                ctx.send(errorJson);
-                            }
 
-                        }
-                        else if ("CALL_BOWNI".equals(action.action)) {
-                            if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION) {
-                                room.setTeamWhoCalledKot(player.getTeam());
-                                room.setCurrentPhase(GamePhase.MAIN_PLAY);
-                                broadcastToRoom(room);
+                                                        System.out.println("[TIMER] 2.5s passed. Resolving trick for Room: " + room.getRoomId());
+                                                        room.finalizeTrick();
+                                                        room.isTrickResolving = false; // Unlock the door
+
+                                                        // Check Bowni Phase
+                                                        if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION && !room.isBowniTimerStarted) {
+                                                            System.out.println("[TIMER] Bowni Phase hit! Starting 10s countdown for Room: " + room.getRoomId());
+                                                            room.isBowniTimerStarted = true;
+
+                                                            ScheduledFuture<?> bowniTask = scheduler.schedule(new Runnable() {
+                                                                @Override
+                                                                public void run() {
+                                                                    try {
+                                                                        synchronized (room) {
+                                                                            if (room.isNetworkPaused) {
+                                                                                System.out.println("[TIMER] Room " + room.getRoomId() + " is frozen. Bowni countdown paused. Waiting 1s...");
+                                                                                scheduler.schedule(this, 1000, TimeUnit.MILLISECONDS);
+                                                                                return;
+                                                                            }
+
+                                                                            if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION) {
+                                                                                System.out.println("[TIMER] 10s passed. Nobody called Bowni. Auto-starting Main Play.");
+                                                                                room.setCurrentPhase(GamePhase.MAIN_PLAY);
+                                                                            }
+                                                                        }
+                                                                        broadcastToRoom(room); // Broadcast outside inner lock
+                                                                    } catch (Exception e) {
+                                                                        System.err.println("[CRITICAL ERROR] Bowni Timer Crashed: " + e.getMessage());
+                                                                        e.printStackTrace();
+                                                                    }
+                                                                }
+                                                            }, 10, TimeUnit.SECONDS);
+                                                            room.setActiveBowniTimer(bowniTask);
+                                                        }
+                                                    } // End inner synchronized block
+                                                    broadcastToRoom(room); // Broadcast outside inner lock
+                                                } catch (Exception e) {
+                                                    System.err.println("[CRITICAL ERROR] Trick Resolution Timer Crashed! " + e.getMessage());
+                                                    e.printStackTrace();
+                                                    synchronized (room) {
+                                                        room.isTrickPaused = false;
+                                                        room.isTrickResolving = false;
+                                                    }
+                                                    broadcastToRoom(room);
+                                                }
+                                            }
+                                        }, 2500, TimeUnit.MILLISECONDS);
+                                        room.setActiveTrickTimer(trickTask);
+                                    }
+                                } catch (IllegalArgumentException | IllegalStateException e) {
+                                    sendError = true;
+                                    errorMessage = e.getMessage().replace("\"", "\\\"");
+                                }
                             }
-                        }
-                        else if ("PLAY_AGAIN".equals(action.action)) {
-                            if (room.getPlayers().size() < 4) {
-                                ctx.send("{\"errorMessage\": \"Cannot start round. A player is missing! Please rejoin.\"}");
+                            else if ("CALL_BOWNI".equals(action.action)) {
+                                if (room.getCurrentPhase() == GamePhase.BOWNI_DECLARATION) {
+                                    room.setTeamWhoCalledKot(player.getTeam());
+                                    room.setCurrentPhase(GamePhase.MAIN_PLAY);
+                                    shouldBroadcast = true;
+                                }
+                            }
+                            else if ("PLAY_AGAIN".equals(action.action)) {
+                                if (room.getPlayers().size() < 4) {
+                                    sendError = true;
+                                    errorMessage = "Cannot start round. A player is missing! Please rejoin.";
+                                } else {
+                                    room.playAnotherRound();
+                                    shouldBroadcast = true;
+                                }
+                            }
+                            else if ("FINISH_GAME".equals(action.action)) {
+                                // dissolveRoom handles its own internal locking, broadcasts, and cleanup.
+                                dissolveRoom(room, "The match has ended. Please rejoin to play a new game.");
                                 return;
                             }
-                            room.playAnotherRound();
-                            broadcastToRoom(room);
-                        }
-                        else if ("FINISH_GAME".equals(action.action)) {
-                            dissolveRoom(room, "The match has ended. Please rejoin to play a new game.");
-                        }
-                        else if ("LEAVE_ROOM".equals(action.action)) {
-                            log.info("roomId={} event=PLAYER_LEAVE_REQUEST playerId={} name={} phase={}", room.getRoomId(), player.getId(), player.getName(), room.getCurrentPhase());
-                            if (room.getCurrentPhase() == GamePhase.WAITING_FOR_PLAYERS) {
-                                room.removePlayer(player);
-                                log.info("roomId={} event=PLAYER_REMOVED playerId={} name={} reason=PLAYER_LEFT_LOBBY", room.getRoomId(), player.getId(), player.getName());
-                                globalPlayers.remove(token);
-                                connectionToToken.remove(ctx);
-                                tokenToConnection.remove(token); // Cleanup
-                                log.debug("roomId={} event=PLAYER_SESSION_CLEANED playerId={} connectionId={}", room.getRoomId(), player.getId(), getLogConnectionId(ctx));
+                            else if ("LEAVE_ROOM".equals(action.action)) {
+                                log.info("roomId={} event=PLAYER_LEAVE_REQUEST playerId={} name={} phase={}", room.getRoomId(), player.getId(), player.getName(), room.getCurrentPhase());
+                                if (room.getCurrentPhase() == GamePhase.WAITING_FOR_PLAYERS) {
+                                    room.removePlayer(player);
+                                    log.info("roomId={} event=PLAYER_REMOVED playerId={} name={} reason=PLAYER_LEFT_LOBBY", room.getRoomId(), player.getId(), player.getName());
 
-                                if (room.getPlayers().isEmpty()) {
-                                    activeRooms.remove(room.getRoomId());
-                                    log.info("roomId={} event=ROOM_CLOSED reason=EMPTY_AFTER_PLAYER_LEAVE", room.getRoomId());
+                                    globalPlayers.remove(token);
+                                    connectionToToken.remove(ctx);
+                                    tokenToConnection.remove(token); // Cleanup
+                                    log.debug("roomId={} event=PLAYER_SESSION_CLEANED playerId={} connectionId={}", room.getRoomId(), player.getId(), getLogConnectionId(ctx));
+
+                                    if (room.getPlayers().isEmpty()) {
+                                        activeRooms.remove(room.getRoomId());
+                                        log.info("roomId={} event=ROOM_CLOSED reason=EMPTY_AFTER_PLAYER_LEAVE", room.getRoomId());
+                                        return; // Room is gone, do not broadcast
+                                    } else {
+                                        logRoomState(room, "AFTER_PLAYER_LEAVE");
+                                        shouldBroadcast = true;
+                                    }
                                 } else {
-                                    logRoomState(room, "AFTER_PLAYER_LEAVE");
-                                    broadcastToRoom(room);
+                                    log.info("roomId={} event=PLAYER_LEAVE_DURING_GAME playerId={} name={} action=ROOM_DISSOLVE", room.getRoomId(), player.getId(), player.getName());
+                                    dissolveRoom(room, player.getName() + " left the table. The room has been dissolved. Please rejoin.");
+                                    return; // Room is gone, do not broadcast
                                 }
-                            } else {
-                                dissolveRoom(room, player.getName() + " left the table. The room has been dissolved. Please rejoin.");
-                                log.info("roomId={} event=PLAYER_LEAVE_DURING_GAME playerId={} name={} action=ROOM_DISSOLVE", room.getRoomId(), player.getId(), player.getName());
                             }
+                        } // 🔓 MASTER LOCK RELEASED
+
+                        // Send errors OR broadcast new state safely outside the lock
+                        if (sendError) {
+                            ctx.send(String.format("{\"errorMessage\": \"%s\", \"errorType\": \"RULE_VIOLATION\"}", errorMessage));
+                        } else if (shouldBroadcast) {
+                            broadcastToRoom(room);
                         }
                     }
                 } catch (Exception e) {
@@ -325,14 +392,18 @@ public class GameServer {
                         GameRoom room = findRoomForPlayer(player);
 
                         if (room != null) {
+                            // 🛡️ THE LOCK: Handle dropping player safely
+                            synchronized (room) {
                             log.info("roomId={} event=PLAYER_DISCONNECTED playerId={} name={} connectionId={}", room.getRoomId(), player.getId(), player.getName(), getLogConnectionId(ctx));
                             if (room.getCurrentPhase() == GamePhase.WAITING_FOR_PLAYERS) {
                                 room.removePlayer(player);
                                 globalPlayers.remove(token);
                                 System.out.println(player.getName() + " left the lobby.");
 
-                                if (room.getPlayers().isEmpty()) activeRooms.remove(room.getRoomId());
-                                else broadcastToRoom(room);
+                                if (room.getPlayers().isEmpty()) {
+                                    activeRooms.remove(room.getRoomId());
+                                    return;
+                                }
                             }
                             else if (room.getCurrentPhase() == GamePhase.MATCH_OVER) {
                                 globalPlayers.remove(token);
@@ -341,21 +412,28 @@ public class GameServer {
                                 room.isNetworkPaused = true;
                                 log.info("roomId={} event=NETWORK_PAUSED playerId={} reason=PLAYER_DISCONNECTED", room.getRoomId(), player.getId());
                                 System.out.println("[ROOM " + room.getRoomId() + "] " + player.getName() + " disconnected! Freezing table. Starting 60s timer...");
-                                broadcastToRoom(room);
+
                                 log.info("roomId={} event=RECONNECT_TIMER_STARTED playerId={} timeoutSeconds=60", room.getRoomId(), player.getId());
                                 ScheduledFuture<?> timer = scheduler.schedule(() -> {
-                                    try {
-                                        log.info("roomId={} event=RECONNECT_TIMER_EXPIRED playerId={}", room.getRoomId(), player.getId());
-                                        log.info("roomId={} event=ROOM_DISSOLVE reason=RECONNECT_TIMEOUT", room.getRoomId());
-                                        System.out.println("[TIMER] 60s expired. Dissolving room " + room.getRoomId());
-                                        dissolveRoom(room, player.getName() + " lost connection. The room has been dissolved. Please rejoin.");
-                                    } catch (Exception e) {
-                                        System.err.println("[CRITICAL ERROR] Doomsday Timer Crashed: " + e.getMessage());
-                                        e.printStackTrace();
+                                    synchronized (room) { // Ensure dissolve is locked
+                                        try {
+                                            log.info("roomId={} event=RECONNECT_TIMER_EXPIRED playerId={}", room.getRoomId(), player.getId());
+                                            log.info("roomId={} event=ROOM_DISSOLVE reason=RECONNECT_TIMEOUT", room.getRoomId());
+                                            System.out.println("[TIMER] 60s expired. Dissolving room " + room.getRoomId());
+                                            dissolveRoom(room, player.getName() + " lost connection. The room has been dissolved. Please rejoin.");
+                                        } catch (Exception e) {
+                                            System.err.println("[CRITICAL ERROR] Doomsday Timer Crashed: " + e.getMessage());
+                                            e.printStackTrace();
+                                        }
                                     }
                                 }, 60, TimeUnit.SECONDS);
 
                                 reconnectTimers.put(token, timer);
+                            }
+                            } // 🔓 LOCK RELEASED
+                            // Only broadcast if the room wasn't destroyed
+                            if (activeRooms.containsKey(room.getRoomId())) {
+                                broadcastToRoom(room);
                             }
                         }
                     }
@@ -468,28 +546,38 @@ public class GameServer {
     }
 
     private static void dissolveRoom(GameRoom room, String reasonMessage) {
-        activeRooms.remove(room.getRoomId());
+        if (room == null) return;
 
-        for (Map.Entry<WsContext, String> entry : connectionToToken.entrySet()) {
-            WsContext connection = entry.getKey();
-            String token = entry.getValue();
-            Player player = globalPlayers.get(token);
+        // 🛡️ THE LOCK: Stop timers and destroy room state
+        synchronized (room) {
+            room.cancelAllTimers();
+            activeRooms.remove(room.getRoomId());
 
-            if (player != null && room.getPlayers().contains(player)) {
-                try {
-                    if (connection.session.isOpen()) {
-                        connection.send(jsonMapper.writeValueAsString(Map.of("errorMessage", reasonMessage)));
+            for (Player player : room.getPlayers()) {
+                // Find token and clean connections safely
+                for (Map.Entry<String, Player> entry : globalPlayers.entrySet()) {
+                    if (entry.getValue().getId().equals(player.getId())) {
+                        String token = entry.getKey();
+                        WsContext connection = tokenToConnection.remove(token);
+
+                        if (connection != null) {
+                            connectionToToken.remove(connection);
+                            if (connection.session.isOpen()) {
+                                try {
+                                    connection.send(jsonMapper.writeValueAsString(Map.of("errorMessage", reasonMessage)));
+                                } catch (Exception e) {
+                                    System.err.println("Failed to send dissolve message.");
+                                }
+                            }
+                        }
+                        globalPlayers.remove(token);
+                        break;
                     }
-                } catch (Exception e) {
-                    System.err.println("Failed to send dissolve message.");
                 }
-                globalPlayers.remove(token);
-                tokenToConnection.remove(token); // Cleanup
             }
         }
         System.out.println("Room " + room.getRoomId() + " dissolved: " + reasonMessage);
     }
-
 
     // Methods for loggers
     private static String getLogConnectionId(WsContext ctx) {
