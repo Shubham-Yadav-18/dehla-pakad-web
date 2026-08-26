@@ -58,7 +58,10 @@
                 </div>
 
                 <input type="text" id="join-code" class="form-control mb-3 text-center fs-5 text-uppercase premium-input" placeholder="4-Digit Code" maxlength="4">
-                <button class="btn btn-premium btn-lg w-100" onclick="joinRoom()">Join Room</button>
+                <button class="btn btn-premium btn-lg w-100 mb-3" onclick="joinRoom()">Join Room</button>
+                <button class="btn btn-premium btn-lg w-100 mb-3"  onclick="joinAsSpectator()">
+                    👁️ Watch Game
+                </button>
             </div>
         </div>
     </div>
@@ -173,6 +176,22 @@
     </div>
 </div>
 
+<div id="spectator-list-screen" class="position-fixed top-0 start-0 w-100 h-100 justify-content-center align-items-center" style="background: rgba(0,0,0,0.85); z-index: 3000; display: none; backdrop-filter: blur(5px);">
+    <div class="glass-panel text-center w-100 mx-3" style="max-width: 400px; max-height: 90vh; display: flex; flex-direction: column;">
+        <h3 class="page-title mb-3">Live Spectators</h3>
+
+        <div class="hide-inner-scroll text-start" style="flex-grow: 1; overflow-y: auto; margin-bottom: 15px; border-radius: 8px;">
+            <table class="glass-table w-100 m-0">
+                <tbody id="spectators-table-body">
+                <!-- Names dynamically injected here -->
+                </tbody>
+            </table>
+        </div>
+
+        <button class="btn btn-premium w-100 rounded-pill py-2" onclick="toggleSpectatorModal()">Close</button>
+    </div>
+</div>
+
 <div id="game-screen">
 
     <!-- 🌟 NEW: Unified Header Bar (Trump, Bowni, Menu) -->
@@ -188,8 +207,13 @@
         </div>
 
         <!-- Right Group: Menu Button -->
-        <div style="pointer-events: auto;">
-            <div id="menu-button" class="hud-badge text-white m-0" style="position: relative; top: 0; right: 0; cursor: pointer; transition: 0.2s;" onclick="toggleGameMenu()">
+        <div class="d-flex align-items-center gap-2" style="pointer-events: auto;">
+            <!-- 🌟 NEW: Spectator Count Badge -->
+            <div id="spectator-badge" class="hud-badge text-white m-0" style="cursor: pointer; display: none;" onclick="toggleSpectatorModal()">
+                👁️ <span id="spectator-count-text">0</span>
+            </div>
+
+            <div id="menu-button" class="hud-badge text-white m-0" style="cursor: pointer; transition: 0.2s;" onclick="toggleGameMenu()">
                 ⚙️
             </div>
         </div>

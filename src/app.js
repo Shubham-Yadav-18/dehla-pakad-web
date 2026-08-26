@@ -272,17 +272,43 @@ function handleServerMessage(data) {
     document.getElementById("menu-scoreA").innerText = state.teamAScore;
     document.getElementById("menu-scoreB").innerText = state.teamBScore;
     document.getElementById("pile-counter").innerText = `Pile: ${state.accumulatedPileSize} cards`;
+  //Spectators list and count handling starts here
+
+      // 🌟 1. SPECTATOR CSS & BADGE INJECTION
+      document.body.classList.toggle("spectator-mode", !!state.isSpectator);
+
+      const specBadge = document.getElementById("spectator-badge");
+      if (state.spectatorCount > 0) {
+          specBadge.style.display = "block";
+          document.getElementById("spectator-count-text").innerText = state.spectatorCount;
+
+          const specTable = document.getElementById("spectators-table-body");
+          specTable.innerHTML = "";
+          if (state.spectatorNames) {
+              state.spectatorNames.forEach(name => {
+                  specTable.innerHTML += `<tr><td class="text-white fw-bold ps-3 py-2">👁️ ${name}</td></tr>`;
+              });
+          }
+      } else {
+          specBadge.style.display = "none";
+      }
+      //Spectators list and count handling Ends here
 
     // Anti-Clockwise Seating
-    const myIndex = (state.seatingPlayerIds && state.seatingPlayerIds.length > 0 && state.myPlayerId)
-        ? state.seatingPlayerIds.indexOf(state.myPlayerId)
-        : -1;
+    // Anti-Clockwise Seating
+        let myIndex = -1;
+        if (state.seatingPlayerIds && state.seatingPlayerIds.length > 0) {
+            myIndex = state.isSpectator ? 0 : (state.myPlayerId ? state.seatingPlayerIds.indexOf(state.myPlayerId) : -1);
+        }
 
-    let rightPlayer = "Waiting...", topPlayer = "Waiting...", leftPlayer = "Waiting...";
-    let rightPlayerId = null, topPlayerId = null, leftPlayerId = null;
+   let rightPlayer = "Waiting...", topPlayer = "Waiting...", leftPlayer = "Waiting...";
+       let bottomPlayerId = null, rightPlayerId = null, topPlayerId = null, leftPlayerId = null;
+       let bottomPlayerName = "Waiting...";
 
     if (myIndex !== -1 && state.seatingOrder && state.seatingPlayerIds) {
         const len = state.seatingPlayerIds.length;
+        bottomPlayerId = state.seatingPlayerIds[myIndex];
+        bottomPlayerName = state.isSpectator ? state.seatingOrder[myIndex] : (state.myName + " (You)");
         rightPlayer = state.seatingOrder[(myIndex + 1) % len] || "Waiting...";
         topPlayer = state.seatingOrder[(myIndex + 2) % len] || "Waiting...";
         leftPlayer = state.seatingOrder[(myIndex + 3) % len] || "Waiting...";
@@ -300,13 +326,13 @@ function handleServerMessage(data) {
                 : `<span class="badge-team-b" style="font-size: 0.75rem;">B</span>`;
         };
 
-        document.getElementById("badge-me").innerHTML = getBadge(state.myPlayerId);
+       document.getElementById("badge-me").innerHTML = getBadge(bottomPlayerId);
         document.getElementById("badge-right").innerHTML = getBadge(rightPlayerId);
         document.getElementById("badge-top").innerHTML = getBadge(topPlayerId);
         document.getElementById("badge-left").innerHTML = getBadge(leftPlayerId);
 
         // Names remain unpolluted without (Wait...) strings
-        document.getElementById("bottom-pod-name").innerText = state.myName + " (You)";
+        document.getElementById("bottom-pod-name").innerText = bottomPlayerName;
         document.getElementById("right-pod-name").innerText = rightPlayer;
         document.getElementById("top-pod-name").innerText = topPlayer;
         document.getElementById("left-pod-name").innerText = leftPlayer;
@@ -332,11 +358,11 @@ function handleServerMessage(data) {
         };
 
         // If local socket is in reconnect state, force own LED to Orange locally
-        if (ws.readyState !== WebSocket.OPEN) {
-            setLocalConnectionStatus("ORANGE");
-        } else {
-            applyLED("pod-me", state.myPlayerId);
-        }
+        if (ws.readyState !== WebSocket.OPEN && !state.isSpectator) {
+                    setLocalConnectionStatus("ORANGE");
+                } else {
+                    applyLED("pod-me", bottomPlayerId);
+                }
 
         applyLED("pod-right", rightPlayerId);
         applyLED("pod-top", topPlayerId);
@@ -357,9 +383,9 @@ function handleServerMessage(data) {
     document.getElementById("pod-left").classList.remove("active-turn");
 
     if (!state.isPaused) {
-        if (state.isMyTurn) {
-            document.getElementById("pod-me").classList.add("active-turn");
-        } else if (state.currentTurnPlayerId === rightPlayerId) {
+            if (state.currentTurnPlayerId === bottomPlayerId) {
+                document.getElementById("pod-me").classList.add("active-turn");
+            } else if (state.currentTurnPlayerId === rightPlayerId) {
             document.getElementById("pod-right").classList.add("active-turn");
         } else if (state.currentTurnPlayerId === topPlayerId) {
             document.getElementById("pod-top").classList.add("active-turn");
@@ -438,7 +464,7 @@ function handleServerMessage(data) {
     const badge = document.getElementById("bowni-badge");
     if (state.bowniTeam) {
         badge.style.display = "block";
-        badge.innerText = `🔥 ${state.bowniTeam === 'TEAM_A' ? 'Team A' : 'Team B'} : Bowni!`;
+        badge.innerText = `🔥 ${state.bowniTeam === 'TEAM_A' ? 'A' : 'B'} : Bowni!`;
         badge.className = "hud-badge text-white m-0 " + (state.bowniTeam === 'TEAM_A' ? 'bowni-neon-a' : 'bowni-neon-b');
         if (!hasPlayedBowniCallThisRound && state.currentPhase === "MAIN_PLAY") {
             playSound("sfx-bowni-call");
@@ -635,4 +661,16 @@ function playCard(cardString) {
 
 function callBowni() { 
     safeSend({ action: "CALL_BOWNI" }); 
+}
+function toggleSpectatorModal() {
+    const screen = document.getElementById("spectator-list-screen");
+    document.getElementById("game-menu-modal").style.display = "none";
+    screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none";
+}
+
+function joinAsSpectator() {
+    const name = document.getElementById("player-name").value.trim();
+    const code = document.getElementById("join-code").value.trim().toUpperCase();
+    if (!name || !code) { alert("Enter Name and Code!"); return; }
+    safeSend({ action: "JOIN_SPECTATOR", playerName: name, roomCode: code });
 }

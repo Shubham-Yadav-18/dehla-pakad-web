@@ -42,5 +42,9 @@ public class GameStateUpdate {
     public Map<String, String> playerTeamsById;
     // 🌟 NEW: Connection Status Map (Player ID -> "GREEN" | "ORANGE" | "RED")
     public Map<String, String> connectionStatuses;
+    // 🌟 NEW: Spectator UI Data
+    public boolean isSpectator;
+    public int spectatorCount;
+    public List<String> spectatorNames;
     public GameStateUpdate() {}
 }

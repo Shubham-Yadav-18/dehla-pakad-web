@@ -14,6 +14,8 @@ public class GameRoom {
     private static final Logger log = LoggerFactory.getLogger(GameRoom.class);
     private final String roomId;
     private final List<Player> players = new java.util.concurrent.CopyOnWriteArrayList<>();
+    // 🌟 NEW: Lock-Free, Concurrency-Safe Spectator List
+    private final List<Spectator> spectators = new java.util.concurrent.CopyOnWriteArrayList<>();
     private GamePhase currentPhase;
 
     public boolean isTrickPaused = false;   // For the 2.5s animation
@@ -362,6 +364,20 @@ public class GameRoom {
     public List<Integer> getHistoryTeamB() { return historyTeamB; }
 
     public List<Player> getPlayers() {return players;}
+    // ==========================================
+    // 🌟 SPECTATOR MANAGEMENT
+    // ==========================================
+    public void addSpectator(Spectator spectator) {
+        this.spectators.add(spectator);
+    }
+
+    public void removeSpectator(Spectator spectator) {
+        this.spectators.remove(spectator);
+    }
+
+    public List<Spectator> getSpectators() {
+        return this.spectators;
+    }
 
     public void setTeamWhoCalledKot(Team team) { this.teamWhoCalledKot = team; }
     public Team getTeamWhoCalledKot() { return teamWhoCalledKot; }

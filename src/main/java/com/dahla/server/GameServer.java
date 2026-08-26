@@ -1,4 +1,5 @@
 package com.dahla.server;
+import com.dahla.model.Spectator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.dahla.dto.GameStateUpdate;
@@ -76,9 +77,10 @@ public class GameServer {
                 try {
                     PlayerAction action = jsonMapper.readValue(ctx.message(), PlayerAction.class);
 
-                    // 🛡️ LOCK-FREE HEARTBEAT: Update timestamp and return immediately
+                    // 🛡️ LOCK-FREE HEARTBEAT
                     if ("PING".equals(action.action)) {
                         String token = connectionToToken.get(ctx);
+                        if (token == null) token = SpectatorManager.getToken(ctx); // Check if Spectator
                         if (token != null) {
                             clientHeartbeats.put(token, System.currentTimeMillis());
                         }
@@ -193,6 +195,26 @@ public class GameServer {
 
                         broadcastToRoom(targetRoom);
                     }
+                    else if ("JOIN_SPECTATOR".equals(action.action)) {
+                        GameRoom targetRoom = activeRooms.get(action.roomCode);
+                        if (targetRoom == null) {
+                            ctx.send("{\"errorMessage\": \"Room not found!\"}");
+                            return;
+                        }
+
+                        String token = generateToken();
+                        String id = generateToken();
+                        boolean success = SpectatorManager.joinAsSpectator(token, id, action.playerName, targetRoom, ctx);
+
+                        if (!success) {
+                            ctx.send("{\"errorMessage\": \"Spectator limit reached for this room (20 max).\"}");
+                            return;
+                        }
+
+                        clientHeartbeats.put(token, System.currentTimeMillis());
+                        broadcastToRoom(targetRoom); // Notifies players the 👁️ count went up
+                    }
+
                     // ==========================================
                     // 2. RECONNECTION SYSTEM
                     // ==========================================
@@ -240,6 +262,19 @@ public class GameServer {
                     // 3. IN-GAME ACTIONS (Play Card, Play Again, Finish, Leave)
                     // ==========================================
                     else {
+                        // 🚨 SPECTATOR ACTION FIREWALL 🚨
+                        if (SpectatorManager.isSpectatorContext(ctx)) {
+                            if ("LEAVE_ROOM".equals(action.action)) {
+                                String token = SpectatorManager.getToken(ctx);
+                                GameRoom room = SpectatorManager.leaveRoom(token);
+                                clientHeartbeats.remove(token);
+                                if (room != null && activeRooms.containsKey(room.getRoomId())) {
+                                    broadcastToRoom(room); // Notifies players the 👁️ count dropped
+                                }
+                            }
+                            return; // 🛡️ DROPS PACKET: Spectators physically cannot execute code below this line.
+                        }
+
                         String token = connectionToToken.get(ctx);
                         if (token == null) return; // Unregistered user trying to play
 
@@ -396,6 +431,17 @@ public class GameServer {
             });
 
             ws.onClose(ctx -> {
+                // 🌟 SPECTATOR FAST-DROP
+                if (SpectatorManager.isSpectatorContext(ctx)) {
+                    String token = SpectatorManager.getToken(ctx);
+                    GameRoom room = SpectatorManager.leaveRoom(token);
+                    clientHeartbeats.remove(token);
+                    if (room != null && activeRooms.containsKey(room.getRoomId())) {
+                        broadcastToRoom(room); // Notifies players the 👁️ count dropped
+                    }
+                    return; // Abort further execution. Zero timers.
+                }
+
                 log.debug("roomId={} event=WS_CLOSE connectionId={}", "UNKNOWN", getLogConnectionId(ctx));
                 String token = connectionToToken.remove(ctx);
                 log.debug("roomId={} event=WS_CLOSE_TOKEN_RESOLVED connectionId={} tokenKnown={}", "UNKNOWN", getLogConnectionId(ctx), token != null);
@@ -472,120 +518,96 @@ public class GameServer {
     }
 
     private static void broadcastToRoom(GameRoom room) {
+        // 🌟 1. COMPUTE TRUTHFUL CONNECTION STATUS ONCE (Lag-Free Optimization)
+        long now = System.currentTimeMillis();
+        Map<String, String> statuses = new java.util.HashMap<>();
+        for (Player p : room.getPlayers()) {
+            // Find token for player
+            String playerToken = globalPlayers.entrySet().stream()
+                    .filter(e -> e.getValue().getId().equals(p.getId()))
+                    .map(Map.Entry::getKey)
+                    .findFirst().orElse(null);
+
+            if (playerToken == null) {
+                statuses.put(p.getId(), "RED");
+            } else {
+                long lastSeen = clientHeartbeats.getOrDefault(playerToken, 0L);
+                long elapsed = now - lastSeen;
+
+                // Check if actively paused by reconnect timer
+                if (reconnectTimers.containsKey(playerToken) || lastSeen == 0L || elapsed > 10000) {
+                    statuses.put(p.getId(), "RED");
+                } else if (elapsed > 4000) {
+                    statuses.put(p.getId(), "ORANGE");
+                } else {
+                    statuses.put(p.getId(), "GREEN");
+                }
+            }
+        }
+        // 🌟 2. BROADCAST TO PLAYERS
         for (Map.Entry<WsContext, String> entry : connectionToToken.entrySet()) {
             WsContext connection = entry.getKey();
             String token = entry.getValue();
             Player player = globalPlayers.get(token);
 
-            if (player == null || !room.getPlayers().contains(player)) {
-                continue;
-            }
+            if (player == null || !room.getPlayers().contains(player)) continue;
 
-            GameStateUpdate update = new GameStateUpdate();
-
-            update.roomCode = room.getRoomId();
+            // Grab the base state and just add the 5 player-specific fields!
+            GameStateUpdate update = buildBaseState(room, statuses);
             update.myToken = token;
-            update.errorMessage = null;
-
-            update.currentPhase = room.getCurrentPhase().name();
-            update.trumpSuit = room.getTrumpSuit() != null ? room.getTrumpSuit().name() : "NOT YET DISCOVERED";
             update.myName = player.getName();
             update.myPlayerId = player.getId();
-            update.currentTurnPlayerName = room.getCurrentTurnPlayer() != null ? room.getCurrentTurnPlayer().getName() : "Waiting...";
-            update.currentTurnPlayerId =
-                    room.getCurrentTurnPlayer() != null
-                            ? room.getCurrentTurnPlayer().getId()
-                            : null;
-            update.isPaused = (room.isTrickPaused || room.isNetworkPaused);
-            update.bowniTeam = room.getTeamWhoCalledKot() != null ? room.getTeamWhoCalledKot().name() : null;
             update.isMyTurn = (room.getCurrentTurnPlayer() != null && room.getCurrentTurnPlayer().equals(player));
-
-            update.seatingOrder = room.getPlayers().stream()
-                    .map(Player::getName)
-                    .collect(Collectors.toList());
-            update.seatingPlayerIds = room.getPlayers().stream()
-                    .map(Player::getId)
-                    .collect(Collectors.toList());
-
-            update.currentTrickCards = room.getCurrentTrick().getTableCards().values().stream()
-                    .map(Card::toString)
-                    .collect(Collectors.toList());
-
-            update.trickPlayerNames = room.getCurrentTrick().getTableCards().keySet().stream()
-                    .map(Player::getName)
-                    .collect(Collectors.toList());
-            update.trickPlayerIds = room.getCurrentTrick()
-                    .getTableCards()
-                    .keySet()
-                    .stream()
-                    .map(Player::getId)
-                    .collect(Collectors.toList());
-            update.accumulatedPileSize = room.getTableAccumulator().size();
-
-            update.myHand = player.getHand().stream()
-                    .map(Card::toString)
-                    .collect(Collectors.toList());
-
-            update.teamAScore = room.getTeamADehlasCount();
-            update.teamBScore = room.getTeamBDehlasCount();
-            update.matchScoreA = room.getMatchPointsTeamA();
-            update.matchScoreB = room.getMatchPointsTeamB();
-            update.historyTeamA = room.getHistoryTeamA();
-            update.historyTeamB = room.getHistoryTeamB();
-
-            // 🌟 NEW: UI Display Data
-            update.isEvenDehla = room.getRules().strictSweepEnabled;
-            update.maxRounds = room.getRules().maxRounds;
-
-            update.playerTeams = room.getPlayers().stream()
-                    .collect(Collectors.toMap(
-                            Player::getName,
-                            p -> p.getTeam().name(),
-                            (existing, ignored) -> existing
-                    ));
-            update.playerTeamsById = room.getPlayers().stream()
-                    .collect(Collectors.toMap(
-                            Player::getId,
-                            p -> p.getTeam().name()
-                    ));
-            //Connection status starts(later it will be converted into function)
-            // 🌟 COMPUTE TRUTHFUL CONNECTION STATUS (Lock-Free)
-            long now = System.currentTimeMillis();
-            Map<String, String> statuses = new java.util.HashMap<>();
-            for (Player p : room.getPlayers()) {
-                // Find token for player
-                String playerToken = globalPlayers.entrySet().stream()
-                        .filter(e -> e.getValue().getId().equals(p.getId()))
-                        .map(Map.Entry::getKey)
-                        .findFirst().orElse(null);
-
-                if (playerToken == null) {
-                    statuses.put(p.getId(), "RED");
-                } else {
-                    long lastSeen = clientHeartbeats.getOrDefault(playerToken, 0L);
-                    long elapsed = now - lastSeen;
-
-                    // Check if actively paused by reconnect timer
-                    if (reconnectTimers.containsKey(playerToken) || lastSeen == 0L || elapsed > 10000) {
-                        statuses.put(p.getId(), "RED");
-                    } else if (elapsed > 4000) {
-                        statuses.put(p.getId(), "ORANGE");
-                    } else {
-                        statuses.put(p.getId(), "GREEN");
-                    }
-                }
-            }
-            update.connectionStatuses = statuses;
-            //Connection status Ends(later it will be converted into function)
+            update.myHand = player.getHand().stream().map(Card::toString).collect(Collectors.toList());
 
             try {
-                if (connection.session.isOpen()) {
-                    connection.send(jsonMapper.writeValueAsString(update));
-                }
+                if (connection.session.isOpen()) connection.send(jsonMapper.writeValueAsString(update));
             } catch (Exception e) {
                 System.err.println("Failed to send state to a player.");
             }
         }
+
+        // 🌟 3. INSTANT SPECTATOR BROADCAST
+        // Generate one final base state and hand it to the SpectatorManager!
+        GameStateUpdate spectatorBase = buildBaseState(room, statuses);
+        SpectatorManager.pruneAndBroadcast(room, clientHeartbeats, jsonMapper, spectatorBase);
+    }
+    // 🌟 HELPER: Builds the 95% of data that is identical for EVERYONE in the room.
+    public static GameStateUpdate buildBaseState(GameRoom room, Map<String, String> statuses) {
+        GameStateUpdate update = new GameStateUpdate();
+        update.roomCode = room.getRoomId();
+        update.errorMessage = null;
+
+        update.currentPhase = room.getCurrentPhase().name();
+        update.trumpSuit = room.getTrumpSuit() != null ? room.getTrumpSuit().name() : "NOT YET DISCOVERED";
+        update.currentTurnPlayerName = room.getCurrentTurnPlayer() != null ? room.getCurrentTurnPlayer().getName() : "Waiting...";
+        update.currentTurnPlayerId = room.getCurrentTurnPlayer() != null ? room.getCurrentTurnPlayer().getId() : null;
+        update.isPaused = (room.isTrickPaused || room.isNetworkPaused);
+        update.bowniTeam = room.getTeamWhoCalledKot() != null ? room.getTeamWhoCalledKot().name() : null;
+
+        update.seatingOrder = room.getPlayers().stream().map(Player::getName).collect(Collectors.toList());
+        update.seatingPlayerIds = room.getPlayers().stream().map(Player::getId).collect(Collectors.toList());
+        update.currentTrickCards = room.getCurrentTrick().getTableCards().values().stream().map(Card::toString).collect(Collectors.toList());
+        update.trickPlayerNames = room.getCurrentTrick().getTableCards().keySet().stream().map(Player::getName).collect(Collectors.toList());
+        update.trickPlayerIds = room.getCurrentTrick().getTableCards().keySet().stream().map(Player::getId).collect(Collectors.toList());
+        update.accumulatedPileSize = room.getTableAccumulator().size();
+
+        update.teamAScore = room.getTeamADehlasCount();
+        update.teamBScore = room.getTeamBDehlasCount();
+        update.matchScoreA = room.getMatchPointsTeamA();
+        update.matchScoreB = room.getMatchPointsTeamB();
+        update.historyTeamA = room.getHistoryTeamA();
+        update.historyTeamB = room.getHistoryTeamB();
+
+        update.isEvenDehla = room.getRules().strictSweepEnabled;
+        update.maxRounds = room.getRules().maxRounds;
+        update.playerTeams = room.getPlayers().stream().collect(Collectors.toMap(Player::getName, p -> p.getTeam().name(), (existing, ignored) -> existing));
+        update.playerTeamsById = room.getPlayers().stream().collect(Collectors.toMap(Player::getId, p -> p.getTeam().name()));
+        update.connectionStatuses = statuses;
+        update.spectatorCount = room.getSpectators().size();
+        update.spectatorNames = room.getSpectators().stream().map(Spectator::getName).collect(Collectors.toList());
+
+        return update;
     }
 
     private static String generateRoomCode() {
@@ -609,6 +631,8 @@ public class GameServer {
         // 🛡️ THE LOCK: Stop timers and destroy room state
         synchronized (room) {
             room.cancelAllTimers();
+            // 🌟 NEW: Wipe all spectators before deleting the room!
+            SpectatorManager.cleanUpRoom(room, jsonMapper, reasonMessage);
             activeRooms.remove(room.getRoomId());
 
             for (Player player : room.getPlayers()) {

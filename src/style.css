@@ -511,6 +511,20 @@
     }
 }
 
+/* =========================================
+   🌟 SPECTATOR "TV VIEW" MODE
+   ========================================= */
+body.spectator-mode .my-hand-container,
+body.spectator-mode #bowni-container,
+body.spectator-mode #victory-buttons {
+    display: none !important;
+}
+
+/* Adjust the bottom pod so the Spectator's TV view isn't blocked by the missing hand */
+body.spectator-mode .pod-bottom {
+    bottom: 20px !important;
+}
+
                 /* =========================================
                    SMART ORIENTATION: MOBILE PORTRAIT
                    ========================================= */
