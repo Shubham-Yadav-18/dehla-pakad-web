@@ -82,6 +82,7 @@
         <button class="btn btn-outline-light w-100 mb-3 rounded-pill fw-bold" style="border-color: var(--glass-border);" onclick="toggleRulesScreen()">📜 Room Rules</button>
         <button class="btn btn-outline-light w-100 mb-3 rounded-pill fw-bold" style="border-color: var(--glass-border);" onclick="toggleScoreboard()">📊 Match Scoreboard</button>
         <button class="btn btn-premium-danger btn-lg w-100 mb-4" onclick="leaveRoom()">🚪 Leave Game</button>
+        <button class="btn btn-outline-light w-100 mb-3 rounded-pill fw-bold" style="border-color: var(--glass-border);" onclick="toggleHowToPlay()">📖 How to Play</button>
         <button class="btn btn-premium btn-lg w-100 mt-1" onclick="toggleGameMenu()">Resume Game</button>
     </div>
 </div>
@@ -192,6 +193,72 @@
     </div>
 </div>
 
+<div id="how-to-play-modal" class="position-fixed top-0 start-0 w-100 h-100 justify-content-center align-items-center" style="background: rgba(0,0,0,0.85); z-index: 3500; display: none; backdrop-filter: blur(5px);">
+    <div class="glass-panel text-center w-100 mx-3 d-flex flex-column" style="max-width: 450px; max-height: 90vh; padding: 25px 20px;">
+        <h3 class="page-title mb-4" style="font-size: 1.5rem;">How to Play</h3>
+
+        <div class="hide-inner-scroll" style="flex-grow: 1; overflow-y: auto; border-radius: 8px;">
+
+            <!-- Step 1 -->
+            <div class="rule-card d-flex align-items-center p-3 mb-3 text-start">
+                <div class="rule-icon-pod pod-purple me-3">🃏</div>
+                <div>
+                    <div class="rule-title">1. The Deal</div>
+                    <p class="rule-text">Everyone gets 5 cards. The game starts <strong>without</strong> a Trump suit.</p>
+                </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="rule-card d-flex align-items-center p-3 mb-3 text-start">
+                <div class="rule-icon-pod pod-blue me-3">♠️</div>
+                <div>
+                    <div class="rule-title">2. Discovering Trump</div>
+                    <p class="rule-text">You must follow suit. The first time a player breaks suit, that new suit permanently becomes <strong>Trump</strong>!</p>
+                </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="rule-card d-flex align-items-center p-3 mb-3 text-start">
+                <div class="rule-icon-pod pod-orange me-3">🔥</div>
+                <div>
+                    <div class="rule-title">3. The Bowni Bet</div>
+                    <p class="rule-text">After all 13 cards are dealt, call Bowni to bet you'll catch <strong>ALL FOUR 10s</strong>. If the enemy catches even one, you lose instantly.</p>
+                </div>
+            </div>
+
+            <!-- 🌟 NEW: Step 4 (Trick Rules & Partner Exception) -->
+            <div class="rule-card d-flex align-items-center p-3 mb-3 text-start">
+                <div class="rule-icon-pod pod-teal me-3">⚔️</div>
+                <div>
+                    <div class="rule-title">4. Playing the Tricks</div>
+                    <p class="rule-text">The player who discovered Trump leads first. You must follow suit. If you can't, you <strong>must play Trump</strong>—<em>unless</em> your partner is currently winning the trick, then you can play anything!</p>
+                </div>
+            </div>
+
+            <!-- Step 5 (Formerly Step 4) -->
+            <div class="rule-card d-flex align-items-center p-3 mb-3 text-start">
+                <div class="rule-icon-pod pod-red me-3">🧹</div>
+                <div>
+                    <div class="rule-title">5. Sweeping the Pile</div>
+                    <p class="rule-text">Winning a trick leaves the cards on the table. The <em>same player</em> must win <strong>TWO tricks in a row</strong> to capture the pile.</p>
+                </div>
+            </div>
+
+            <!-- Step 6 (Formerly Step 5) -->
+            <div class="rule-card d-flex align-items-center p-3 mb-2 text-start">
+                <div class="rule-icon-pod pod-gold me-3">🏆</div>
+                <div>
+                    <div class="rule-title">6. 13th Trick & Scoring</div>
+                    <p class="rule-text">The winner of the final trick sweeps everything left on the table. Most 10s wins the round!</p>
+                </div>
+            </div>
+
+        </div>
+
+        <button class="btn btn-premium w-100 rounded-pill py-3 mt-4 fw-bold fs-6" onclick="toggleHowToPlay()">Close Guide</button>
+    </div>
+</div>
+
 <div id="game-screen">
 
     <!-- 🌟 NEW: Unified Header Bar (Trump, Bowni, Menu) -->
@@ -245,6 +312,32 @@
     <div class="my-hand-container">
         <div id="my-turn-glow" class="position-absolute w-100 h-100" style="border-radius: 20px; top: 0; left: 0; pointer-events: none; transition: 0.3s;"></div>
         <div id="my-hand" class="d-flex position-relative z-1"></div>
+    </div>
+</div>
+
+<div id="danger-modal" class="position-fixed top-0 start-0 w-100 h-100 justify-content-center align-items-center" style="background: rgba(0,0,0,0.85); z-index: 4000; display: none; backdrop-filter: blur(5px);">
+
+    <div class="glass-panel text-center w-100 mx-3 d-flex flex-column align-items-center" style="max-width: 420px; padding: 30px 25px; border: 1px solid rgba(239, 68, 68, 0.4); box-shadow: 0 8px 32px rgba(239, 68, 68, 0.25);">
+
+        <!-- 🌟 NEW: Premium Icon Pod -->
+        <div class="danger-icon-pod mb-3">
+            <span style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">⚠️</span>
+        </div>
+
+        <h3 id="danger-title" class="text-danger fw-bold mb-3 text-uppercase" style="font-size: 1.25rem; letter-spacing: 1px;">Warning</h3>
+
+        <!-- 🌟 FIX: Added px-3 to give the text breathing room from the edges -->
+        <p id="danger-message" class="text-white mb-4 px-3" style="font-size: 0.95rem; line-height: 1.5; color: #cbd5e1;">
+            Are you sure you want to proceed?
+        </p>
+
+        <!-- 🌟 FIX: Responsive Button Stacking (Vertical on Mobile, Horizontal on Desktop) -->
+        <div class="d-flex flex-column flex-sm-row gap-3 w-100 mt-2">
+            <!-- order-2 on mobile puts Cancel at the bottom for safety, but order-sm-1 keeps it on the left for Desktop -->
+            <button class="btn btn-outline-light w-100 rounded-pill fw-bold py-3 py-sm-2 order-2 order-sm-1" onclick="closeDangerModal()">Cancel</button>
+            <button class="btn btn-premium-danger w-100 rounded-pill fw-bold py-3 py-sm-2 order-1 order-sm-2" onclick="confirmDangerModal()">Yes, Proceed</button>
+        </div>
+
     </div>
 </div>
 

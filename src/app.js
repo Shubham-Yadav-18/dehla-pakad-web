@@ -637,15 +637,70 @@ function joinRoom() {
     if (!name || !code) { alert("Enter Name and Code!"); return; } 
     safeSend({ action: "JOIN_ROOM", playerName: name, roomCode: code }); 
 }
+//commenting it to add dynamic alert to avoid misstuch || Starts here
+//function leaveRoom() {
+//    safeSend({ action: "LEAVE_ROOM" });
+//    localStorage.removeItem("dehlaToken");
+//    setTimeout(() => { location.reload(); }, 100);
+//}
+//
+//function finishGame() {
+//    if (confirm("End game?")) safeSend({ action: "FINISH_GAME" });
+//}
+//commenting it to add dynamic alert to avoid misstuch || Ends here
+// 🌟 1. The State-Aware Leave Room
+function leaveRoom() {
 
-function leaveRoom() { 
-    safeSend({ action: "LEAVE_ROOM" }); 
-    localStorage.removeItem("dehlaToken"); 
-    setTimeout(() => { location.reload(); }, 100); 
+    // Otherwise, throw the Danger Modal
+    showDangerModal(
+        "Leave Game?",
+        "Are you sure you want to leave the room? This will disconnect you from the table.",
+        executeLeaveRoom
+    );
 }
 
-function finishGame() { 
-    if (confirm("End game?")) safeSend({ action: "FINISH_GAME" }); 
+// The isolated network execution for leaving
+function executeLeaveRoom() {
+    safeSend({ action: "LEAVE_ROOM" });
+    localStorage.removeItem("dehlaToken");
+    setTimeout(() => { location.reload(); }, 100);
+}
+
+// 🌟 2. The Updated Finish Game
+function finishGame() {
+    showDangerModal(
+        "End Match Early?",
+        "Ending the match now will dissolve the room for everyone. Are you sure?",
+        function() {
+            safeSend({ action: "FINISH_GAME" });
+        }
+    );
+}
+// 🚨 UNIVERSAL DANGER MODAL ENGINE
+let pendingDangerAction = null;
+
+function showDangerModal(title, message, executionCallback) {
+    document.getElementById("danger-title").innerText = title;
+    document.getElementById("danger-message").innerText = message;
+
+    // Auto-close Game Menu if it's open, to prevent stacked overlays
+    document.getElementById("game-menu-modal").style.display = "none";
+
+    pendingDangerAction = executionCallback;
+    document.getElementById("danger-modal").style.display = "flex";
+}
+
+function closeDangerModal() {
+    document.getElementById("danger-modal").style.display = "none";
+    pendingDangerAction = null; // Clear memory
+}
+
+function confirmDangerModal() {
+    document.getElementById("danger-modal").style.display = "none";
+    if (pendingDangerAction && typeof pendingDangerAction === "function") {
+        pendingDangerAction(); // Execute the stored network request
+    }
+    pendingDangerAction = null;
 }
 
 function playAgain() { 
@@ -673,4 +728,11 @@ function joinAsSpectator() {
     const code = document.getElementById("join-code").value.trim().toUpperCase();
     if (!name || !code) { alert("Enter Name and Code!"); return; }
     safeSend({ action: "JOIN_SPECTATOR", playerName: name, roomCode: code });
+}
+
+function toggleHowToPlay() {
+    const screen = document.getElementById("how-to-play-modal");
+    // Auto-close the main game menu if it happens to be open
+    document.getElementById("game-menu-modal").style.display = "none";
+    screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none";
 }

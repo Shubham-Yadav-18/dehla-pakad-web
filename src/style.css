@@ -525,6 +525,78 @@ body.spectator-mode .pod-bottom {
     bottom: 20px !important;
 }
 
+/* =========================================
+   🌟 PREMIUM "HOW TO PLAY" MODAL
+   ========================================= */
+.rule-card {
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.6) 0%, rgba(0, 0, 0, 0.8) 100%);
+    border: 1px solid var(--glass-border);
+    border-top: 1px solid rgba(255, 255, 255, 0.12); /* Glossy top edge */
+    border-radius: 14px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transition: transform 0.2s ease;
+}
+.rule-card:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(145deg, rgba(40, 55, 75, 0.7) 0%, rgba(5, 5, 5, 0.9) 100%);
+}
+
+/* Apple-style Icon Pods */
+.rule-icon-pod {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    box-shadow: inset 0 2px 4px rgba(255,255,255,0.2), 0 4px 8px rgba(0,0,0,0.4);
+}
+.pod-purple { background: linear-gradient(135deg, #8b5cf6, #5b21b6); border: 1px solid #a78bfa; }
+.pod-blue   { background: linear-gradient(135deg, #3b82f6, #1e40af); border: 1px solid #93c5fd; }
+.pod-orange { background: linear-gradient(135deg, #f97316, #c2410c); border: 1px solid #fdba74; }
+.pod-red    { background: linear-gradient(135deg, #ef4444, #b91c1c); border: 1px solid #fca5a5; }
+.pod-gold   { background: linear-gradient(135deg, #f59e0b, #b45309); border: 1px solid #fcd34d; }
+.pod-teal { background: linear-gradient(135deg, #14b8a6, #0f766e); border: 1px solid #5eead4; }
+/* Gradient Headers & Soft Text */
+.rule-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: linear-gradient(to right, #60a5fa, #a78bfa); /* Light Blue to Light Purple */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+}
+.rule-text {
+    font-size: 0.85rem;
+    color: #cbd5e1; /* Slate grey (softer on the eyes than pure white) */
+    line-height: 1.4;
+    margin: 0;
+}
+.rule-text strong {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* =========================================
+   🚨 DANGER MODAL PREMIUM ELEMENTS
+   ========================================= */
+.danger-icon-pod {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(153, 27, 27, 0.4));
+    border: 1px solid rgba(239, 68, 68, 0.5);
+    box-shadow: inset 0 2px 10px rgba(255, 100, 100, 0.1), 0 4px 15px rgba(239, 68, 68, 0.4);
+}
+
                 /* =========================================
                    SMART ORIENTATION: MOBILE PORTRAIT
                    ========================================= */
