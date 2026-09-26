@@ -243,18 +243,27 @@ function handleServerMessage(data) {
             return; // Stop processing, no UI updates needed for a pong
         }
     if (state.errorMessage) {
-        if (state.errorType === "RULE_VIOLATION") {
-            playSound("sfx-error");
-        } else {
-            alert(state.errorMessage);
-            if (state.errorMessage.includes("expired") || state.errorMessage.includes("rejoin") || state.errorMessage.includes("dissolved")) {
-                localStorage.removeItem("dehlaToken");
-                mySecretToken = null;
-                location.reload();
+            if (state.errorType === "RULE_VIOLATION") {
+                playSound("sfx-error");
+            } else {
+                // 🌟 UPGRADE: Smart System Routing
+                const msg = state.errorMessage.toLowerCase();
+                const isFatal = msg.includes("expired") || msg.includes("rejoin") || msg.includes("dissolved");
+
+                if (isFatal) {
+                    // Fatal Error: Display message, wait for 'OK', then clean up and reload
+                    showSystemAlert("Session Ended", state.errorMessage, function() {
+                        localStorage.removeItem("dehlaToken");
+                        mySecretToken = null;
+                        location.reload();
+                    });
+                } else {
+                    // Standard Error ("Room Full", "Invalid Code"): Just display the message
+                    showSystemAlert("Notice", state.errorMessage, null);
+                }
             }
+            return;
         }
-        return;
-    }
 
     if (state.myToken && state.myToken !== mySecretToken) {
         mySecretToken = state.myToken;
@@ -595,12 +604,30 @@ function step(dir) {
 
     if (currentLimit <= 1 || currentLimit >= 100) stopStepper();
 }
+// --- INLINE FORM VALIDATION ENGINE ---
+function showInputError(inputId, errorId, message) {
+    const errorElement = document.getElementById(errorId);
+    const inputElement = document.getElementById(inputId);
+
+    if (!errorElement || !inputElement) return;
+
+    errorElement.innerText = " " + message;
+    errorElement.style.visibility = "visible";
+    errorElement.style.opacity = "1";
+
+    // Concurrency Safe: Overwrites previous listeners to prevent memory stacking
+    inputElement.oninput = function() {
+        errorElement.style.opacity = "0";
+        errorElement.style.visibility = "hidden";
+        inputElement.oninput = null; // Self-destructs the listener
+    };
+}
 
 function createRoom() {
     const name = document.getElementById("player-name").value.trim();
     if (!name) {
-        alert("Enter your name!");
-        return;
+        showInputError("player-name", "name-error", "Please enter your name.");
+                return;
     }
     const isEvenDehla = document.getElementById("evenDehlaToggle").checked;
     const isLimitEnabled = document.getElementById("roundLimitToggle").checked;
@@ -631,11 +658,24 @@ preloadCardImages();
 function toggleGameMenu() { const menu = document.getElementById("game-menu-modal"); menu.style.display = (menu.style.display === "none" || menu.style.display === "") ? "flex" : "none"; }
 function toggleScoreboard() { const screen = document.getElementById("scoreboard-screen"); document.getElementById("game-menu-modal").style.display = "none"; screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none"; }
 function toggleRulesScreen() { const screen = document.getElementById("rules-screen"); document.getElementById("game-menu-modal").style.display = "none"; screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none"; }
-function joinRoom() { 
-    const name = document.getElementById("player-name").value.trim(); 
-    const code = document.getElementById("join-code").value.trim().toUpperCase(); 
-    if (!name || !code) { alert("Enter Name and Code!"); return; } 
-    safeSend({ action: "JOIN_ROOM", playerName: name, roomCode: code }); 
+
+function joinRoom() {
+    const name = document.getElementById("player-name").value.trim();
+    const code = document.getElementById("join-code").value.trim().toUpperCase();
+
+    let hasError = false;
+    if (!name) {
+        showInputError("player-name", "name-error", "Please enter your name.");
+        hasError = true;
+    }
+    if (!code) {
+        showInputError("join-code", "code-error", "Please enter a room code.");
+        hasError = true;
+    }
+
+    if (hasError) return; // Halt execution if either field failed
+
+    safeSend({ action: "JOIN_ROOM", playerName: name, roomCode: code });
 }
 //commenting it to add dynamic alert to avoid misstuch || Starts here
 //function leaveRoom() {
@@ -703,6 +743,30 @@ function confirmDangerModal() {
     pendingDangerAction = null;
 }
 
+// 🌟 NEW: ISOLATED SYSTEM ALERT ENGINE STARTS HERE
+let pendingSystemAction = null;
+
+function showSystemAlert(title, message, executionCallback = null) {
+    document.getElementById("system-alert-title").innerText = title;
+    document.getElementById("system-alert-message").innerText = message;
+
+    // Auto-close Game Menu if open to prevent stacking
+    const gameMenu = document.getElementById("game-menu-modal");
+    if(gameMenu) gameMenu.style.display = "none";
+
+    pendingSystemAction = executionCallback;
+    document.getElementById("system-alert-modal").style.display = "flex";
+}
+
+function confirmSystemAlert() {
+    document.getElementById("system-alert-modal").style.display = "none";
+    if (pendingSystemAction && typeof pendingSystemAction === "function") {
+        pendingSystemAction(); // Execute the stored network/reload request
+    }
+    pendingSystemAction = null; // Clean up memory
+}
+// 🌟 NEW: ISOLATED SYSTEM ALERT ENGINE ENDS HERE
+
 function playAgain() { 
     safeSend({ action: "PLAY_AGAIN" }); 
 }
@@ -723,10 +787,23 @@ function toggleSpectatorModal() {
     screen.style.display = (screen.style.display === "none" || screen.style.display === "") ? "flex" : "none";
 }
 
+
 function joinAsSpectator() {
     const name = document.getElementById("player-name").value.trim();
     const code = document.getElementById("join-code").value.trim().toUpperCase();
-    if (!name || !code) { alert("Enter Name and Code!"); return; }
+
+    let hasError = false;
+    if (!name) {
+        showInputError("player-name", "name-error", "Please enter your name.");
+        hasError = true;
+    }
+    if (!code) {
+        showInputError("join-code", "code-error", "Please enter a room code.");
+        hasError = true;
+    }
+
+    if (hasError) return;
+
     safeSend({ action: "JOIN_SPECTATOR", playerName: name, roomCode: code });
 }
 
