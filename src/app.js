@@ -45,6 +45,29 @@ function playSound(soundId, allowOverlap = false) {
 }
 
 // ==========================================
+// 🌟 WAKE LOCK API (PREVENT SCREEN DIMMING)
+// ==========================================
+let wakeLock = null;
+
+async function enableWakeLock() {
+    if ('wakeLock' in navigator) {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+//            console.log('[WAKE LOCK] Active: Screen will not dim.');
+
+            // Re-acquire the lock if the user minimizes the app and comes back
+            document.addEventListener('visibilitychange', async () => {
+                if (wakeLock !== null && document.visibilityState === 'visible') {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                }
+            });
+        } catch (err) {
+            console.warn('[WAKE LOCK] Denied by OS:', err.message);
+        }
+    }
+}
+
+// ==========================================
 // 🌟 RESILIENT CONNECTION MANAGER
 // ==========================================
 function connectWebSocket() {
@@ -640,6 +663,7 @@ function createRoom() {
             maxRounds: isLimitEnabled ? currentLimit : null
         }
     });
+    enableWakeLock(); // 🌟 Lock the screen brightness
 }
 
 function preloadCardImages() {
@@ -676,6 +700,7 @@ function joinRoom() {
     if (hasError) return; // Halt execution if either field failed
 
     safeSend({ action: "JOIN_ROOM", playerName: name, roomCode: code });
+    enableWakeLock(); // 🌟 Lock the screen brightness
 }
 //commenting it to add dynamic alert to avoid misstuch || Starts here
 //function leaveRoom() {
