@@ -224,7 +224,7 @@ function createCardHTML(cardStr, isClickable, isCenter = false) {
 
     return `
         <div class="playing-card ${disableClass}" ${clickEvent}
-             style="background-image: url('main/resources/cards/${fileName}');">
+             style="background-image: url('main/resources/cards/${fileName}?v=2');">
         </div>`;
 }
 
@@ -673,7 +673,7 @@ function preloadCardImages() {
     suits.forEach(suit => {
         ranks.forEach(rank => {
             const img = new Image();
-            img.src = `main/resources/cards/${rank}_of_${suit}.svg`;
+            img.src = `main/resources/cards/${rank}_of_${suit}.svg?v=2`;
         });
     });
 }

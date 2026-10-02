@@ -1,5 +1,5 @@
 // 🌟 OFFLINE CACHE & INSTANT LOAD ENGINE
-const CACHE_NAME = 'dehla-pakad-v1';
+const CACHE_NAME = 'dehla-pakad-v2';
 const STATIC_ASSETS = [
     './',
     './index.html',
