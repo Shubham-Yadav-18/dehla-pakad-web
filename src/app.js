@@ -492,7 +492,45 @@ function handleServerMessage(data) {
     if (!state.bowniTeam) hasPlayedBowniCallThisRound = false;
     if (state.currentPhase !== "ROUND_OVER" && state.currentPhase !== "MATCH_OVER") hasPlayedVictorySoundThisRound = false;
 
-    document.getElementById("bowni-container").style.display = (state.currentPhase === "BOWNI_DECLARATION") ? "block" : "none";
+// 🌟 TRIGGER THE TIMER BAR
+const bowniContainer = document.getElementById("bowni-container");
+const timerBar = document.getElementById("bowni-timer-bar");
+
+if (state.currentPhase === "BOWNI_DECLARATION") {
+    if (bowniContainer.style.display !== "block") {
+        bowniContainer.style.display = "block";
+        // Force the browser to restart the CSS animation from 100%
+        timerBar.classList.remove("bowni-timer-active");
+        void timerBar.offsetWidth;
+        timerBar.classList.add("bowni-timer-active");
+    }
+} else {
+    bowniContainer.style.display = "none";
+}
+
+//// 🌟 TRIGGER THE SMART EDGE LASER
+//const smartEdge = document.getElementById("bowni-smart-edge");
+//if (state.bowniTeam && state.currentPhase === "MAIN_PLAY") {
+//    smartEdge.className = "position-absolute top-0 start-0 w-100 h-100 " + (state.bowniTeam === 'TEAM_A' ? 'team-a-edge' : 'team-b-edge');
+//} else {
+//    smartEdge.className = "position-absolute top-0 start-0 w-100 h-100";
+//    smartEdge.style.display = "none";
+//}
+
+// 🌟 TRIGGER THE BOWNI SLOW FLARE BORDER
+const flareBorder = document.getElementById("bowni-flare-border");
+if (flareBorder) {
+    if (state.bowniTeam && state.currentPhase === "MAIN_PLAY") {
+        flareBorder.className = "position-absolute top-0 start-0 w-100 h-100 " +
+            (state.bowniTeam === 'TEAM_A' ? 'flare-team-a' : 'flare-team-b');
+    } else {
+        flareBorder.className = "position-absolute top-0 start-0 w-100 h-100";
+        flareBorder.style.display = "none";
+    }
+}
+
+
+
     const badge = document.getElementById("bowni-badge");
     if (state.bowniTeam) {
         badge.style.display = "block";

@@ -274,6 +274,16 @@
 
 <div id="game-screen">
 
+    <!-- 🌟 NEW: Smart Edge Bowni Indicator -->
+<!--    <div id="bowni-smart-edge" class="position-absolute top-0 start-0 w-100 h-100" style="pointer-events: none; z-index: 45; display: none; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">-->
+<!--        <div class="edge-beam edge-top"></div>-->
+<!--        <div class="edge-beam edge-right"></div>-->
+<!--        <div class="edge-beam edge-bottom"></div>-->
+<!--        <div class="edge-beam edge-left"></div>-->
+<!--    </div>-->
+    <!-- 🌟 Bowni Solid Flare Border -->
+    <div id="bowni-flare-border" class="position-absolute top-0 start-0 w-100 h-100" style="pointer-events: none; z-index: 45; display: none;"></div>
+
     <!-- 🌟 NEW: Unified Header Bar (Trump, Bowni, Menu) -->
     <div class="position-absolute top-0 start-0 w-100 d-flex justify-content-between align-items-start p-2 p-md-3" style="z-index: 50; pointer-events: none;">
 
@@ -300,9 +310,14 @@
     </div>
 
     <!-- (Keep your bowni-container and pods below this exactly as they are) -->
+    <!-- 🌟 NEW: Live Tension Bar inside Bowni Container -->
     <div id="bowni-container" class="position-absolute top-50 start-50 translate-middle text-center" style="display: none; z-index: 100;">
-        <button class="btn btn-danger btn-lg shadow-lg" style="animation: pulse-pod 1s infinite alternate;" onclick="callBowni()">🔥 CALL BOWNI</button>
-        <p class="text-white mt-2 fw-bold bg-dark p-1 rounded">10 Seconds to Declare...</p>
+        <button class="btn btn-danger btn-lg shadow-lg mb-3" style="animation: pulse-pod 1s infinite alternate; padding: 12px 35px; font-size: 1.4rem; font-weight: bold; border-radius: 50px;" onclick="callBowni()">🔥 CALL BOWNI</button>
+
+        <div class="timer-track" style="width: 220px; height: 10px; background: rgba(0,0,0,0.6); border-radius: 10px; overflow: hidden; margin: 0 auto; border: 1px solid rgba(255,255,255,0.2); box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);">
+            <div id="bowni-timer-bar" style="height: 100%; width: 100%; background: #2ecc71;"></div>
+        </div>
+        <div class="text-white mt-2 fw-bold text-uppercase tracking-wide" style="font-size: 0.75rem; letter-spacing: 1px; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">Declaration Window</div>
     </div>
 
     <div id="pod-me" class="player-pod pod-bottom">
