@@ -598,6 +598,7 @@ public class GameServer {
         update.matchScoreB = room.getMatchPointsTeamB();
         update.historyTeamA = room.getHistoryTeamA();
         update.historyTeamB = room.getHistoryTeamB();
+        update.historyBowniCaller = room.getHistoryBowniCaller();
 
         update.isEvenDehla = room.getRules().strictSweepEnabled;
         update.maxRounds = room.getRules().maxRounds;

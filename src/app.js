@@ -553,10 +553,36 @@ if (flareBorder) {
         mainTbody.innerHTML = "";
         victoryTbody.innerHTML = "";
         for (let i = 0; i < state.historyTeamA.length; i++) {
-            const rowHTML = `<tr><td>${i + 1}</td><td class="text-success">+${state.historyTeamA[i]}</td><td class="text-success">+${state.historyTeamB[i]}</td></tr>`;
-            mainTbody.innerHTML += rowHTML;
-            victoryTbody.innerHTML += rowHTML;
-        }
+
+                    // 1. Get points
+                    const ptsA = state.historyTeamA[i];
+                    const ptsB = state.historyTeamB[i];
+
+                    // 2. Who called it? (Will be 'TEAM_A', 'TEAM_B', or null)
+                    const caller = (state.historyBowniCaller && state.historyBowniCaller.length > i)
+                        ? state.historyBowniCaller[i]
+                        : null;
+
+                    // 3. Derive success purely from the score gap
+                    let displayA = `+${ptsA}`;
+                    let displayB = `+${ptsB}`;
+
+                    if (caller === 'TEAM_A' && ptsA <= ptsB) {
+                        displayA = `+0<span style=" opacity: 2.0; font-size: 1.0em; margin-left: 1px;">💔</span>`;
+                    } else if (caller === 'TEAM_B' && ptsB <= ptsA) {
+                        displayB = `+0<span style=" opacity: 2.0; font-size: 1.0em; margin-left: 1px;">💔</span>`;
+                    }
+
+                    // 4. Inject
+                    const rowHTML = `<tr>
+                        <td>${i + 1}</td>
+                        <td class="text-success">${displayA}</td>
+                        <td class="text-success">${displayB}</td>
+                    </tr>`;
+
+                    mainTbody.innerHTML += rowHTML;
+                    victoryTbody.innerHTML += rowHTML;
+                }
         document.getElementById("history-total-A").innerText = state.matchScoreA || 0;
         document.getElementById("history-total-B").innerText = state.matchScoreB || 0;
     }

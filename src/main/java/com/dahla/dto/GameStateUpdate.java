@@ -24,6 +24,7 @@ public class GameStateUpdate {
     // Add these near your matchScore variables
     public List<Integer> historyTeamA;
     public List<Integer> historyTeamB;
+    public List<String> historyBowniCaller;
 
     // Add these so the frontend knows who is sitting where!
     public List<String> seatingOrder;

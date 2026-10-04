@@ -37,6 +37,7 @@ public class GameRoom {
 
     private List<Integer> historyTeamA = new java.util.ArrayList<>();
     private List<Integer> historyTeamB = new java.util.ArrayList<>();
+    private List<String> historyBowniCaller = new java.util.ArrayList<>();
 
 
 
@@ -265,6 +266,12 @@ public class GameRoom {
             this.historyTeamA.add(this.teamAFinalPoints);
             this.historyTeamB.add(this.teamBFinalPoints);
 
+            if (this.teamWhoCalledKot != null) {
+                this.historyBowniCaller.add(this.teamWhoCalledKot.name());
+            } else {
+                this.historyBowniCaller.add(null);
+            }
+
             System.out.println("Round Over! Final Points -> Team A: " + matchPointsTeamA + " | Team B: " + matchPointsTeamB);
         }
     }
@@ -362,6 +369,7 @@ public class GameRoom {
     // Add their getters at the very bottom of the file:
     public List<Integer> getHistoryTeamA() { return historyTeamA; }
     public List<Integer> getHistoryTeamB() { return historyTeamB; }
+    public List<String> getHistoryBowniCaller() { return historyBowniCaller; }
 
     public List<Player> getPlayers() {return players;}
     // ==========================================
