@@ -29,6 +29,7 @@ public class GameRoom {
     private int teamAFinalPoints;
     private int teamBFinalPoints;
     private int currentRoundNumber = 1;
+    private int roundStarterIndex = 0;
 
 
     private int matchPointsTeamA = 0;
@@ -93,7 +94,7 @@ public class GameRoom {
 
 
         this.currentPhase = GamePhase.DISCOVERING_TRUMP;
-        this.currentTurnPlayer = players.get(0); // ADD THIS: Player 1 starts the game
+        this.currentTurnPlayer = players.get(roundStarterIndex); // MODIFIED: Use the dynamic index instead of hardcoding players.get(0)
     }
 
     /**
@@ -272,6 +273,15 @@ public class GameRoom {
                 this.historyBowniCaller.add(null);
             }
 
+            // --- 🌟 NEW: CALCULATE NEXT ROUND STARTER BASED ON LOSING TEAM ---
+            if (this.teamAFinalPoints > this.teamBFinalPoints) {
+                // Team B lost
+                this.roundStarterIndex = findNextStarterForLosingTeam(Team.TEAM_B, this.roundStarterIndex);
+            } else if (this.teamBFinalPoints > this.teamAFinalPoints) {
+                // Team A lost
+                this.roundStarterIndex = findNextStarterForLosingTeam(Team.TEAM_A, this.roundStarterIndex);
+            }
+
             System.out.println("Round Over! Final Points -> Team A: " + matchPointsTeamA + " | Team B: " + matchPointsTeamB);
         }
     }
@@ -350,6 +360,16 @@ public class GameRoom {
         if (activeBowniTimer != null && !activeBowniTimer.isDone()) {
             activeBowniTimer.cancel(false);
         }
+    }
+    // 🌟 NEW: Helper to find the next valid seat for the losing team
+    private int findNextStarterForLosingTeam(Team losingTeam, int currentStarter) {
+        int nextIndex = (currentStarter + 1) % 4; // Start with the immediate next player
+
+        // Advance clockwise until we land on a player from the losing team
+        while (players.get(nextIndex).getTeam() != losingTeam) {
+            nextIndex = (nextIndex + 1) % 4;
+        }
+        return nextIndex;
     }
 
     // Getters
